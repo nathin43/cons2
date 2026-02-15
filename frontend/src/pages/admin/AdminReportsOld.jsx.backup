@@ -1,0 +1,995 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/AdminLayout';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
+import api from '../../services/api';
+import './AdminReports.css';
+
+const AdminReports = () => {
+  const { admin } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    newUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    totalRevenue: 0,
+    avgOrderValue: 0
+  });
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    dateRange: 'all',
+    location: '',
+    minOrderValue: '',
+    maxOrderValue: '',
+    paymentMethod: ''
+  });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0
+  });
+
+  // Fetch all reports
+  const fetchReports = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', pagination.currentPage);
+      if (filters.searchUser) queryParams.append('searchUser', filters.searchUser);
+      if (filters.reportType) queryParams.append('reportType', filters.reportType);
+      if (filters.paymentStatus) queryParams.append('paymentStatus', filters.paymentStatus);
+      if (filters.orderStatus) queryParams.append('orderStatus', filters.orderStatus);
+      if (filters.startDate) queryParams.append('startDate', filters.startDate);
+      if (filters.endDate) queryParams.append('endDate', filters.endDate);
+
+      const response = await api.get(`/reports/customers?${queryParams.toString()}`);
+      if (response.data.success) {
+        setReports(response.data.reports);
+        setPagination({
+          currentPage: response.data.currentPage || 1,
+          totalPages: response.data.totalPages || 1
+        });
+      }
+    } catch (error) {
+      if (error.response?.status === 403) {
+        toast.error('Access Denied: Only Main Admin can view all reports');
+      } else {
+        toast.error('Failed to fetch reports');
+      }
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch dashboard stats
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/reports/stats/dashboard');
+      if (response.data.success) {
+        setStats(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [pagination.currentPage, filters]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchTrendStats();
+  }, []);
+
+  // Handle filter changes
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setDraftFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleApplyFilters = () => {
+    setFilters({ ...draftFilters });
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handleClearFilters = () => {
+    const cleared = {
+      searchUser: '',
+      reportType: '',
+      paymentStatus: '',
+      orderStatus: '',
+      startDate: '',
+      endDate: ''
+    };
+    setDraftFilters(cleared);
+    setFilters(cleared);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  // View report details
+  const handleViewDetails = async (reportId) => {
+    try {
+      const response = await api.get(`/reports/customers/${reportId}`);
+      if (response.data.success) {
+        setSelectedReport(response.data.data);
+        setShowDetailModal(true);
+        setOpenSections({
+          customer: true,
+          orders: true,
+          payments: false,
+          reviews: false,
+          meta: true
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to fetch report details');
+    }
+  };
+
+  // Download report
+  const handleDownloadReport = async (reportId) => {
+    try {
+      const response = await api.put(`/reports/customers/${reportId}/download`);
+      if (response.data.success) {
+        toast.success('Report downloaded successfully');
+        // Refresh reports to show updated download count
+        fetchReports();
+        if (selectedReport?.customerId === reportId) {
+          handleViewDetails(reportId);
+        }
+      }
+    } catch (error) {
+      toast.error('Failed to download report');
+    }
+  };
+
+  const handleDeleteReport = async (reportId) => {
+    const confirmDelete = window.confirm('Delete all reports for this customer? This action cannot be undone.');
+    if (!confirmDelete) return;
+
+    try {
+      const response = await api.delete(`/reports/customers/${reportId}`);
+      if (response.data.success) {
+        toast.success('Customer reports deleted');
+        fetchReports();
+        if (selectedReport?.customerId === reportId) {
+          setShowDetailModal(false);
+          setSelectedReport(null);
+        }
+      }
+    } catch (error) {
+      toast.error('Failed to delete customer reports');
+    }
+  };
+
+  const handleRegenerateReport = async (reportId) => {
+    const confirmRegen = window.confirm('Regenerate reports for this customer? Existing reports will be replaced.');
+    if (!confirmRegen) return;
+
+    try {
+      const response = await api.post(`/reports/customers/${reportId}/regenerate`);
+      if (response.data.success) {
+        toast.success('Customer report regenerated');
+        fetchReports();
+        handleViewDetails(reportId);
+      }
+    } catch (error) {
+      toast.error('Failed to regenerate customer report');
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatShortDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatCurrency = (amount) => `₹${Number(amount || 0).toFixed(2)}`;
+
+  const getOrderStatusClass = (status) => {
+    const normalized = (status || '').toLowerCase();
+    if (normalized === 'delivered') return 'status-success';
+    if (normalized === 'cancelled') return 'status-danger';
+    return 'status-warning';
+  };
+
+  const getPaymentStatusClass = (status) => {
+    const normalized = (status || '').toLowerCase();
+    if (normalized === 'paid' || normalized === 'completed') return 'status-success';
+    if (normalized === 'failed') return 'status-danger';
+    return 'status-warning';
+  };
+
+  const toggleSection = (key) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const buildCsv = (report) => {
+    const rows = [];
+    rows.push(['Customer Name', report.customerDetails?.name || '']);
+    rows.push(['Email', report.customerDetails?.email || '']);
+    rows.push(['Mobile', report.customerDetails?.mobile || '']);
+    rows.push(['Address', report.customerDetails?.address || '']);
+    rows.push(['Account Created Date', formatDate(report.customerDetails?.accountCreatedAt)]);
+    rows.push(['Total Orders', report.customerDetails?.totalOrdersCount || 0]);
+    rows.push(['Total Amount Spent', report.customerDetails?.totalAmountSpent || 0]);
+    rows.push([]);
+    rows.push(['Order Details']);
+    rows.push(['Order ID', 'Order Date', 'Order Status', 'Total Amount']);
+    report.orders?.forEach(order => {
+      rows.push([
+        order.orderNumber || order.orderId || '',
+        formatDate(order.orderDate),
+        order.orderStatus,
+        order.totalAmount
+      ]);
+    });
+    rows.push([]);
+    rows.push(['Payment Details']);
+    rows.push(['Payment Method', 'Payment Status', 'Transaction ID', 'Payment Date', 'Invoice Number']);
+    report.payments?.forEach(payment => {
+      rows.push([
+        payment.paymentMethod,
+        payment.paymentStatus,
+        payment.transactionId || '',
+        formatDate(payment.paymentDate),
+        payment.invoiceNumber
+      ]);
+    });
+    rows.push([]);
+    rows.push(['Reviews']);
+    rows.push(['Product', 'Rating', 'Comment', 'Review Date']);
+    report.reviews?.forEach(review => {
+      rows.push([
+        review.productName,
+        review.rating,
+        review.comment,
+        formatDate(review.reviewDate)
+      ]);
+    });
+    rows.push([]);
+    rows.push(['Report Meta']);
+    rows.push(['Generated At', formatDate(report.meta?.generatedAt)]);
+    rows.push(['Generated By', report.meta?.generatedBy || 'System']);
+    rows.push(['Report Status', report.meta?.status]);
+    rows.push(['Download Count', report.meta?.downloadCount || 0]);
+
+    return rows.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  };
+
+  const handleExportExcel = (report) => {
+    const csvContent = buildCsv(report);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = (report.customerDetails?.name || 'customer').replace(/\s+/g, '-').toLowerCase();
+    link.href = url;
+    link.download = `customer-report-${safeName}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = (report) => {
+    const doc = new jsPDF();
+    let y = 12;
+    const addLine = (text) => {
+      doc.text(String(text || ''), 14, y);
+      y += 6;
+      if (y > 280) {
+        doc.addPage();
+        y = 12;
+      }
+    };
+
+    doc.setFontSize(16);
+    addLine('Customer Report');
+    doc.setFontSize(11);
+    addLine(`Customer: ${report.customerDetails?.name || 'N/A'}`);
+    addLine(`Email: ${report.customerDetails?.email || 'N/A'}`);
+    addLine(`Mobile: ${report.customerDetails?.mobile || 'N/A'}`);
+    addLine(`Address: ${report.customerDetails?.address || 'N/A'}`);
+    addLine(`Account Created: ${formatDate(report.customerDetails?.accountCreatedAt)}`);
+    addLine(`Total Orders: ${report.customerDetails?.totalOrdersCount || 0}`);
+    addLine(`Total Spent: ${formatCurrency(report.customerDetails?.totalAmountSpent)}`);
+    addLine('');
+
+    doc.setFontSize(12);
+    addLine('Order Details');
+    doc.setFontSize(10);
+    report.orders?.forEach(order => {
+      addLine(`Order: ${order.orderNumber || order.orderId} | ${formatDate(order.orderDate)} | ${order.orderStatus} | ${formatCurrency(order.totalAmount)}`);
+      order.products?.forEach(item => {
+        addLine(`  - ${item.name} x${item.quantity} @ ${formatCurrency(item.price)}`);
+      });
+    });
+    addLine('');
+
+    doc.setFontSize(12);
+    addLine('Payment Details');
+    doc.setFontSize(10);
+    report.payments?.forEach(payment => {
+      addLine(`Method: ${payment.paymentMethod} | Status: ${payment.paymentStatus} | Txn: ${payment.transactionId || 'N/A'}`);
+    });
+    addLine('');
+
+    doc.setFontSize(12);
+    addLine('Reviews');
+    doc.setFontSize(10);
+    if (report.reviews?.length) {
+      report.reviews.forEach(review => {
+        addLine(`${review.productName} | ${review.rating}★ | ${review.comment}`);
+      });
+    } else {
+      addLine('No reviews available');
+    }
+    addLine('');
+
+    doc.setFontSize(12);
+    addLine('Report Meta');
+    doc.setFontSize(10);
+    addLine(`Generated At: ${formatDate(report.meta?.generatedAt)}`);
+    addLine(`Generated By: ${report.meta?.generatedBy || 'System'}`);
+    addLine(`Status: ${report.meta?.status}`);
+    addLine(`Downloads: ${report.meta?.downloadCount || 0}`);
+
+    const safeName = (report.customerDetails?.name || 'customer').replace(/\s+/g, '-').toLowerCase();
+    doc.save(`customer-report-${safeName}.pdf`);
+    handleDownloadReport(report.customerId);
+  };
+
+  // Get status badge color
+  const getStatusColor = (status) => {
+    const colors = {
+      'Generated': '#4CAF50',
+      'Downloaded': '#2196F3',
+      'Archived': '#9E9E9E'
+    };
+    return colors[status] || '#666';
+  };
+
+  // Get report type badge color
+  const getTypeColor = (type) => {
+    const colors = {
+      'Order Report': '#0066cc',
+      'Payment Report': '#FF9800',
+      'Invoice': '#9C27B0'
+    };
+    return colors[type] || '#666';
+  };
+
+  const getMonthRange = (offset = 0) => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0, 23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const getReportCount = async (params) => {
+    const query = new URLSearchParams({ page: 1, limit: 1, ...params });
+    const response = await api.get(`/reports?${query.toString()}`);
+    return response.data?.totalReports || 0;
+  };
+
+  const fetchTrendStats = async () => {
+    try {
+      const { start: thisStart, end: thisEnd } = getMonthRange(0);
+      const { start: lastStart, end: lastEnd } = getMonthRange(-1);
+
+      const [
+        lastTotal,
+        lastGenerated,
+        lastDownloaded,
+        thisTotal,
+        thisGenerated,
+        thisDownloaded
+      ] = await Promise.all([
+        getReportCount({ startDate: lastStart.toISOString(), endDate: lastEnd.toISOString() }),
+        getReportCount({ status: 'Generated', startDate: lastStart.toISOString(), endDate: lastEnd.toISOString() }),
+        getReportCount({ status: 'Downloaded', startDate: lastStart.toISOString(), endDate: lastEnd.toISOString() }),
+        getReportCount({ startDate: thisStart.toISOString(), endDate: thisEnd.toISOString() }),
+        getReportCount({ status: 'Generated', startDate: thisStart.toISOString(), endDate: thisEnd.toISOString() }),
+        getReportCount({ status: 'Downloaded', startDate: thisStart.toISOString(), endDate: thisEnd.toISOString() })
+      ]);
+
+      setTrendStats({
+        total: { current: thisTotal, previous: lastTotal },
+        generated: { current: thisGenerated, previous: lastGenerated },
+        downloaded: { current: thisDownloaded, previous: lastDownloaded },
+        thisMonth: { current: thisTotal, previous: lastTotal }
+      });
+    } catch (error) {
+      console.error('Error fetching trend stats:', error);
+    }
+  };
+
+  const getTrendMeta = (current, previous) => {
+    if (!previous) {
+      return {
+        direction: current > 0 ? 'up' : 'neutral',
+        label: current > 0 ? '100%' : '0%'
+      };
+    }
+    const diff = ((current - previous) / previous) * 100;
+    return {
+      direction: diff >= 0 ? 'up' : 'down',
+      label: `${Math.abs(diff).toFixed(1)}%`
+    };
+  };
+
+  const hasActiveFilters = Object.values(draftFilters).some(Boolean);
+
+  const totalTrend = getTrendMeta(trendStats.total.current, trendStats.total.previous);
+  const generatedTrend = getTrendMeta(trendStats.generated.current, trendStats.generated.previous);
+  const downloadedTrend = getTrendMeta(trendStats.downloaded.current, trendStats.downloaded.previous);
+  const thisMonthTrend = getTrendMeta(trendStats.thisMonth.current, trendStats.thisMonth.previous);
+
+  return (
+    <AdminLayout>
+      <div className="admin-reports-container">
+        {/* Header */}
+        <div className="reports-header">
+          <h1>📊 Customer Reports</h1>
+          <p>View and manage customer-wise detailed reports</p>
+        </div>
+
+        {/* Stats Cards */}
+        {stats && (
+          <div className="reports-stats">
+            <div className="stat-card">
+              <div className="stat-icon">📈</div>
+              <div className="stat-content">
+                <div className="stat-label">Total Reports</div>
+                <div className="stat-value">{stats.totalReports || 0}</div>
+                <div className={`stat-trend ${totalTrend.direction}`}>
+                  <span className="trend-arrow">{totalTrend.direction === 'down' ? '↓' : '↑'}</span>
+                  <span>{totalTrend.label} vs last month</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">✅</div>
+              <div className="stat-content">
+                <div className="stat-label">Generated Reports</div>
+                <div className="stat-value">{stats.generated || 0}</div>
+                <div className={`stat-trend ${generatedTrend.direction}`}>
+                  <span className="trend-arrow">{generatedTrend.direction === 'down' ? '↓' : '↑'}</span>
+                  <span>{generatedTrend.label} vs last month</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">⬇️</div>
+              <div className="stat-content">
+                <div className="stat-label">Downloaded Reports</div>
+                <div className="stat-value">{stats.downloaded || 0}</div>
+                <div className={`stat-trend ${downloadedTrend.direction}`}>
+                  <span className="trend-arrow">{downloadedTrend.direction === 'down' ? '↓' : '↑'}</span>
+                  <span>{downloadedTrend.label} vs last month</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">📅</div>
+              <div className="stat-content">
+                <div className="stat-label">This Month Reports</div>
+                <div className="stat-value">{stats.thisMonth || 0}</div>
+                <div className={`stat-trend ${thisMonthTrend.direction}`}>
+                  <span className="trend-arrow">{thisMonthTrend.direction === 'down' ? '↓' : '↑'}</span>
+                  <span>{thisMonthTrend.label} vs last month</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="reports-filters">
+          <div className={`filter-group ${draftFilters.searchUser ? 'active' : ''}`}>
+            <label>Search Customer Email</label>
+            <input
+              type="text"
+              name="searchUser"
+              placeholder="Enter customer email..."
+              value={draftFilters.searchUser}
+              onChange={handleFilterChange}
+              className="filter-input"
+            />
+          </div>
+
+          <div className={`filter-group ${draftFilters.reportType ? 'active' : ''}`}>
+            <label>Report Type</label>
+            <select
+              name="reportType"
+              value={draftFilters.reportType}
+              onChange={handleFilterChange}
+              className="filter-select"
+            >
+              <option value="">All Types</option>
+              <option value="Order Report">Order Report</option>
+              <option value="Payment Report">Payment Report</option>
+              <option value="Invoice">Invoice</option>
+            </select>
+          </div>
+
+          <div className={`filter-group ${draftFilters.paymentStatus ? 'active' : ''}`}>
+            <label>Payment Status</label>
+            <select
+              name="paymentStatus"
+              value={draftFilters.paymentStatus}
+              onChange={handleFilterChange}
+              className="filter-select"
+            >
+              <option value="">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+
+          <div className={`filter-group ${draftFilters.orderStatus ? 'active' : ''}`}>
+            <label>Order Status</label>
+            <select
+              name="orderStatus"
+              value={draftFilters.orderStatus}
+              onChange={handleFilterChange}
+              className="filter-select"
+            >
+              <option value="">All Orders</option>
+              <option value="pending">Pending</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div className={`filter-group ${draftFilters.startDate ? 'active' : ''}`}>
+            <label>Start Date</label>
+            <input
+              type="date"
+              name="startDate"
+              value={draftFilters.startDate}
+              onChange={handleFilterChange}
+              className="filter-input date-input"
+              placeholder="YYYY-MM-DD"
+            />
+            <small className="filter-hint">YYYY-MM-DD</small>
+          </div>
+
+          <div className={`filter-group ${draftFilters.endDate ? 'active' : ''}`}>
+            <label>End Date</label>
+            <input
+              type="date"
+              name="endDate"
+              value={draftFilters.endDate}
+              onChange={handleFilterChange}
+              className="filter-input date-input"
+              placeholder="YYYY-MM-DD"
+            />
+            <small className="filter-hint">YYYY-MM-DD</small>
+          </div>
+
+          <div className="filter-actions">
+            <button
+              type="button"
+              className="filter-btn clear-btn"
+              onClick={handleClearFilters}
+              disabled={!hasActiveFilters}
+            >
+              Clear Filters
+            </button>
+            <button
+              type="button"
+              className="filter-btn apply-btn"
+              onClick={handleApplyFilters}
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Reports Table */}
+        <div className="reports-table-container">
+          {loading ? (
+            <div className="loading-skeleton">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="skeleton-row">
+                  <div className="skeleton-cell user"></div>
+                  <div className="skeleton-cell user"></div>
+                  <div className="skeleton-cell amount"></div>
+                  <div className="skeleton-cell amount"></div>
+                  <div className="skeleton-cell date"></div>
+                  <div className="skeleton-cell status"></div>
+                  <div className="skeleton-cell actions"></div>
+                </div>
+              ))}
+            </div>
+          ) : reports.length > 0 ? (
+            <>
+              <div className="reports-table-scroll">
+                <table className="reports-table">
+                  <thead>
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Email</th>
+                      <th>Total Orders</th>
+                      <th>Total Amount</th>
+                      <th>Last Order Date</th>
+                      <th>Report Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map(report => (
+                      <tr key={report._id} className="report-row">
+                        <td data-label="Customer" className="user-cell">
+                          <div className="user-name">{report.customerDetails?.name || 'Unknown Customer'}</div>
+                        </td>
+                        <td data-label="Email" className="user-email">
+                          {report.customerDetails?.email || 'N/A'}
+                        </td>
+                        <td data-label="Total Orders" className="amount">
+                          {report.totalOrdersCount || 0}
+                        </td>
+                        <td data-label="Total Amount" className="amount">
+                          {formatCurrency(report.totalAmountSpent)}
+                        </td>
+                        <td data-label="Last Order Date" className="date">
+                          {formatShortDate(report.lastOrderDate)}
+                        </td>
+                        <td data-label="Report Status">
+                          <span
+                            className="status-pill"
+                            style={{ backgroundColor: getStatusColor(report.reportStatus) }}
+                          >
+                            {report.reportStatus}
+                          </span>
+                        </td>
+                        <td data-label="Actions" className="actions">
+                          <button
+                            onClick={() => handleViewDetails(report.customerId)}
+                            className="action-btn view-btn"
+                            title="View Report"
+                            aria-label="View report"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M12 5c5.5 0 9.5 4.7 10.5 6.2a1 1 0 0 1 0 1.6C21.5 14.3 17.5 19 12 19S2.5 14.3 1.5 12.8a1 1 0 0 1 0-1.6C2.5 9.7 6.5 5 12 5Zm0 3.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Z" fill="currentColor" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDownloadReport(report.customerId)}
+                            className="action-btn download-btn"
+                            title="Download Report"
+                            aria-label="Download report"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M12 3a1 1 0 0 1 1 1v9.59l2.3-2.29a1 1 0 1 1 1.4 1.42l-4.01 4a1 1 0 0 1-1.4 0l-4.01-4a1 1 0 1 1 1.4-1.42L11 13.59V4a1 1 0 0 1 1-1Zm-7 14a1 1 0 0 1 1 1v2h12v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" fill="currentColor" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReport(report.customerId)}
+                            className="action-btn delete-btn"
+                            title="Delete Report"
+                            aria-label="Delete report"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M9 3h6a1 1 0 0 1 1 1v2h4a1 1 0 1 1 0 2h-1v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8H4a1 1 0 1 1 0-2h4V4a1 1 0 0 1 1-1Zm1 3h4V5h-4v1Zm-2 2v11h8V8H8Z" fill="currentColor" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                    disabled={pagination.currentPage === 1}
+                    className="pagination-btn"
+                  >
+                    Previous
+                  </button>
+                  <span className="pagination-info">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className="pagination-btn"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-illustration">
+                <svg viewBox="0 0 120 90" aria-hidden="true">
+                  <rect x="8" y="18" width="104" height="64" rx="12" fill="#f1f5f9" />
+                  <rect x="20" y="30" width="80" height="8" rx="4" fill="#cbd5e1" />
+                  <rect x="20" y="46" width="60" height="8" rx="4" fill="#dbe3ec" />
+                  <rect x="20" y="62" width="70" height="8" rx="4" fill="#cbd5e1" />
+                  <circle cx="96" cy="26" r="10" fill="#e2e8f0" />
+                  <path d="M92 26h8" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <p>No customer reports available yet</p>
+              <small>Try changing filters or broaden the date range.</small>
+            </div>
+          )}
+        </div>
+
+        {/* Detail Modal */}
+        {showDetailModal && selectedReport && (
+          <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
+            <div className="modal-content detail-modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Customer Report</h2>
+                <button
+                  className="close-btn"
+                  onClick={() => setShowDetailModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="report-accordion">
+                  <div className={`accordion-section ${openSections.customer ? 'open' : ''}`}>
+                    <button type="button" className="accordion-header" onClick={() => toggleSection('customer')}>
+                      <span>👤 Customer Details</span>
+                      <span className="accordion-toggle">{openSections.customer ? '−' : '+'}</span>
+                    </button>
+                    {openSections.customer && (
+                      <div className="accordion-content">
+                        <div className="detail-row">
+                          <span className="label">Name:</span>
+                          <span className="value">{selectedReport.customerDetails?.name}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Email:</span>
+                          <span className="value">{selectedReport.customerDetails?.email}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Mobile:</span>
+                          <span className="value">{selectedReport.customerDetails?.mobile}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Address:</span>
+                          <span className="value">{selectedReport.customerDetails?.address}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Account Created:</span>
+                          <span className="value">{formatDate(selectedReport.customerDetails?.accountCreatedAt)}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Total Orders:</span>
+                          <span className="value">{selectedReport.customerDetails?.totalOrdersCount}</span>
+                        </div>
+                        <div className="detail-row total">
+                          <span className="label">Total Spent:</span>
+                          <span className="value">{formatCurrency(selectedReport.customerDetails?.totalAmountSpent)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`accordion-section ${openSections.orders ? 'open' : ''}`}>
+                    <button type="button" className="accordion-header" onClick={() => toggleSection('orders')}>
+                      <span>🧾 Order Details</span>
+                      <span className="accordion-toggle">{openSections.orders ? '−' : '+'}</span>
+                    </button>
+                    {openSections.orders && (
+                      <div className="accordion-content">
+                        {selectedReport.orders?.length ? (
+                          selectedReport.orders.map(order => (
+                            <div key={order.orderId || order.orderNumber} className="order-card">
+                              <div className="order-header">
+                                <div>
+                                  <div className="order-title">Order {order.orderNumber || order.orderId}</div>
+                                  <div className="order-subtitle">{formatDate(order.orderDate)}</div>
+                                </div>
+                                <span className={`status-badge ${getOrderStatusClass(order.orderStatus)}`}>
+                                  {order.orderStatus}
+                                </span>
+                              </div>
+                              <div className="order-items">
+                                {order.products?.map((item, idx) => (
+                                  <div key={idx} className="item">
+                                    <span>{item.name}</span>
+                                    <span className="item-qty">Qty: {item.quantity}</span>
+                                    <span className="item-price">{formatCurrency(item.total)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="detail-row total">
+                                <span className="label">Order Total:</span>
+                                <span className="value">{formatCurrency(order.totalAmount)}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="empty-subtext">No orders available.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`accordion-section ${openSections.payments ? 'open' : ''}`}>
+                    <button type="button" className="accordion-header" onClick={() => toggleSection('payments')}>
+                      <span>💳 Payment Details</span>
+                      <span className="accordion-toggle">{openSections.payments ? '−' : '+'}</span>
+                    </button>
+                    {openSections.payments && (
+                      <div className="accordion-content">
+                        {selectedReport.payments?.length ? (
+                          selectedReport.payments.map((payment, idx) => (
+                            <div key={idx} className="detail-card">
+                              <div className="detail-row">
+                                <span className="label">Method:</span>
+                                <span className="value">{payment.paymentMethod}</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Status:</span>
+                                <span className={`status-badge ${getPaymentStatusClass(payment.paymentStatus)}`}>
+                                  {payment.paymentStatus}
+                                </span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Transaction ID:</span>
+                                <span className="value">{payment.transactionId || 'N/A'}</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Payment Date:</span>
+                                <span className="value">{formatDate(payment.paymentDate)}</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Invoice Number:</span>
+                                <span className="value">{payment.invoiceNumber}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="empty-subtext">No payment details available.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`accordion-section ${openSections.reviews ? 'open' : ''}`}>
+                    <button type="button" className="accordion-header" onClick={() => toggleSection('reviews')}>
+                      <span>⭐ Feedback & Reviews</span>
+                      <span className="accordion-toggle">{openSections.reviews ? '−' : '+'}</span>
+                    </button>
+                    {openSections.reviews && (
+                      <div className="accordion-content">
+                        {selectedReport.reviews?.length ? (
+                          selectedReport.reviews.map((review, idx) => (
+                            <div key={idx} className="detail-card">
+                              <div className="detail-row">
+                                <span className="label">Product:</span>
+                                <span className="value">{review.productName}</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Rating:</span>
+                                <span className="value">{review.rating} ★</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Comment:</span>
+                                <span className="value">{review.comment}</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="label">Review Date:</span>
+                                <span className="value">{formatDate(review.reviewDate)}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="empty-subtext">No reviews or feedback available.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`accordion-section ${openSections.meta ? 'open' : ''}`}>
+                    <button type="button" className="accordion-header" onClick={() => toggleSection('meta')}>
+                      <span>📌 Report Meta Info</span>
+                      <span className="accordion-toggle">{openSections.meta ? '−' : '+'}</span>
+                    </button>
+                    {openSections.meta && (
+                      <div className="accordion-content">
+                        <div className="detail-row">
+                          <span className="label">Generated At:</span>
+                          <span className="value">{formatDate(selectedReport.meta?.generatedAt)}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Generated By:</span>
+                          <span className="value">{selectedReport.meta?.generatedBy}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Report Status:</span>
+                          <span
+                            className="status-badge"
+                            style={{ backgroundColor: getStatusColor(selectedReport.meta?.status) }}
+                          >
+                            {selectedReport.meta?.status}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Download Count:</span>
+                          <span className="value">{selectedReport.meta?.downloadCount || 0}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  onClick={() => handleDownloadPdf(selectedReport)}
+                  className="modal-action-btn primary"
+                >
+                  ⬇️ Download PDF
+                </button>
+                <button
+                  onClick={() => handleExportExcel(selectedReport)}
+                  className="modal-action-btn"
+                >
+                  📄 Export Excel
+                </button>
+                <button
+                  onClick={() => handleRegenerateReport(selectedReport.customerId)}
+                  className="modal-action-btn"
+                >
+                  ♻️ Regenerate
+                </button>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="close-modal-btn"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default AdminReports;

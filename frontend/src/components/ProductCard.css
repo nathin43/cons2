@@ -1,0 +1,650 @@
+/* ==========================================
+   PREMIUM PRODUCT CARD - MODERN ELECTRICAL SHOWROOM
+   Clean, professional design with smooth animations
+   ========================================== */
+
+.product-card-premium {
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.06),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Card Lift Effect on Hover */
+.product-card-premium:hover {
+  transform: translateY(-8px);
+  box-shadow:
+    0 20px 40px rgba(15, 23, 42, 0.1),
+    0 8px 20px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+/* ==========================================
+   IMAGE SECTION - CLEAN & CENTERED
+   ========================================== */
+.product-image-link {
+  text-decoration: none;
+  display: block;
+  position: relative;
+}
+
+.product-image-container {
+  position: relative;
+  padding-top: 100%; /* 1:1 Aspect */
+  overflow: hidden;
+  background: linear-gradient(to bottom, #f8fafc 0%, #ffffff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.product-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 24px;
+  transition: transform 0.5s ease-out;
+  filter: drop-shadow(0 4px 12px rgba(15, 23, 42, 0.08));
+}
+
+/* Gentle Image Zoom on Hover */
+.product-card-premium:hover .product-image {
+  transform: scale(1.04);
+  filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.1));
+}
+
+/* ==========================================
+   CATEGORY BADGE - GRADIENT PILL OVERLAY
+   ========================================== */
+.category-badge-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  color: #ffffff;
+  border-radius: 100px;
+  box-shadow: 
+    0 2px 10px rgba(99, 102, 241, 0.25),
+    0 0 12px rgba(99, 102, 241, 0.1);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease-out;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+.product-card-premium:hover .category-badge-overlay {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 14px rgba(99, 102, 241, 0.3),
+    0 0 16px rgba(99, 102, 241, 0.15);
+}
+
+/* ==========================================
+   PRODUCT INFO - CLEAN HIERARCHY
+   ========================================== */
+.product-info {
+  padding: 20px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+/* ==========================================
+   PRODUCT NAME - BOLD DARK NAVY
+   ========================================== */
+.product-title-link {
+  text-decoration: none;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.product-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #1e293b; /* Dark charcoal */
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 2.8em;
+  transition: color 0.3s ease;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+.product-title-link:hover .product-title {
+  color: #6366f1; /* Vibrant purple on hover */
+}
+
+/* ==========================================
+   BRAND NAME - MUTED GREY
+   ========================================== */
+.product-brand {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8; /* Muted grey */
+  margin: 0 0 14px 0;
+  line-height: 1.3;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+/* Rating Section */
+.rating-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stars-display {
+  display: flex;
+  color: #f59e0b;
+  font-size: 14px;
+  gap: 2px;
+}
+
+.star.empty {
+  color: #e2e8f0;
+}
+
+.star.half {
+  background: linear-gradient(90deg, #f59e0b 50%, #e2e8f0 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.rating-text {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+.rating-reviews {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* ==========================================
+   PRICE AND STOCK WRAPPER
+   ========================================== */
+.price-stock-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  margin-bottom: 18px;
+  padding-top: 16px;
+  border-top: 2px solid #f1f5f9;
+  gap: 12px;
+}
+
+/* Price Section */
+.price-section {
+  flex: 1;
+}
+
+.price-display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.price-label {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+.price-amount {
+  font-size: 18px;
+  font-weight: bold;
+  color: #059669;
+  letter-spacing: -0.01em;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+  background: #D1FAE5;
+  padding: 8px 16px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow: none;
+  transition: all 0.3s ease-in-out;
+}
+
+.product-card-premium:hover .price-amount {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);
+}
+
+/* Smaller rupee symbol */
+.price-amount::first-letter {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ==========================================
+   STOCK INDICATOR - SOFT GREEN PILL
+   ========================================== */
+.stock-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #DCFCE7;
+  color: #16A34A;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+  box-shadow: none;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+.stock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================
+   ACTION BUTTONS - MODERN GRADIENT & OUTLINE
+   ========================================== */
+.product-actions-premium {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-add-to-cart,
+.btn-view-details {
+  border: none;
+  border-radius: 100px;
+  padding: 13px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 44px;
+  font-family: 'Inter', 'Poppins', 'Roboto', sans-serif;
+}
+
+/* ==========================================
+   ADD TO CART - PREMIUM SOFT BLUE → PURPLE GRADIENT
+   Compact, minimal, modern pill design with micro-interactions
+   ========================================== */
+.btn-add-to-cart {
+  /* Deep blue professional color */
+  background: #1E3A8A;
+  color: #ffffff;
+  
+  /* Minimal shadow for clean look */
+  box-shadow: 0 2px 4px rgba(30, 58, 138, 0.1);
+  
+  /* Perfect pill shape */
+  border: none;
+  border-radius: 50px;
+  
+  /* Compact size with minimal spacing */
+  padding: 11px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  
+  /* Smooth micro-interactions foundation */
+  transition: all 0.25s ease-in-out;
+}
+
+/* Button Icons - Small, minimal cart icon */
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.25s ease-in-out, opacity 0.25s ease-in-out;
+}
+
+/* Spinner for loading state */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ripple effect on click - creates premium pulse */
+.btn-add-to-cart::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Shimmer Effect on Hover - subtle light sweep */
+.btn-add-to-cart::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent);
+  transition: left 0.5s ease-out;
+}
+
+.btn-add-to-cart:hover::before {
+  left: 100%;
+}
+
+/* HOVER STATE - Scale 1.05, color shift, deeper shadow */
+.btn-add-to-cart:hover:not(:disabled) {
+  transform: scale(1.05);
+  
+  /* Lighter blue on hover */
+  background: #1D4ED8;
+  
+  /* Subtle shadow increase */
+  box-shadow: 0 4px 8px rgba(29, 78, 216, 0.2);
+}
+
+/* ACTIVE STATE - Quick press-down with ripple pulse */
+.btn-add-to-cart:active:not(:disabled) {
+  transform: scale(0.96);
+  
+  box-shadow: 0 1px 2px rgba(30, 58, 138, 0.15);
+  
+  /* Fast transition for instant feedback */
+  transition: all 0.15s ease-in-out;
+}
+
+/* Ripple animation trigger on click */
+.btn-add-to-cart:active:not(:disabled)::after {
+  animation: ripplePulse 0.5s ease-out;
+}
+
+@keyframes ripplePulse {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.6;
+  }
+  100% {
+    width: 200%;
+    height: 200%;
+    opacity: 0;
+  }
+}
+
+/* ==========================================
+   ADDED TO CART STATE - SUCCESS WITH CHECKMARK ANIMATION
+   Icon animates into checkmark with elegant bounce
+   ========================================== */
+.btn-add-to-cart.added-state {
+  background: #4B5563;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(75, 85, 99, 0.2), 0 2px 6px rgba(75, 85, 99, 0.1);
+  cursor: default;
+  border-radius: 50px;
+  opacity: 1;
+  font-weight: 600;
+  
+  /* Smooth color morph and bounce animation */
+  animation: successBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes successBounce {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.btn-add-to-cart.added-state:hover {
+  background: #374151;
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(55, 65, 81, 0.25), 0 3px 8px rgba(55, 65, 81, 0.15);
+}
+
+/* Checkmark icon animation - slides in with bounce */
+.btn-add-to-cart.added-state .btn-icon {
+  animation: checkmarkBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkmarkBounce {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Disabled State - Out of Stock */
+.btn-add-to-cart:disabled,
+.btn-add-to-cart.disabled-state {
+  background: #DC2626;
+  color: #ffffff;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.9;
+  border-radius: 50px;
+}
+
+.btn-add-to-cart:disabled::before,
+.btn-add-to-cart.disabled-state::before {
+  display: none;
+}
+
+.btn-add-to-cart:disabled:hover,
+.btn-add-to-cart.disabled-state:hover {
+  background: #DC2626;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+/* ==========================================
+   VIEW DETAILS - LIGHT GRAY MINIMAL
+   ========================================== */
+.btn-view-details {
+  background: #F3F4F6;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+  border-radius: 100px;
+  box-shadow: none;
+}
+
+.btn-arrow {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+/* Shine effect */
+.btn-view-details::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent);
+  transition: left 0.5s ease-out;
+}
+
+.btn-view-details:hover::before {
+  left: 100%;
+}
+
+/* Hover: Subtle gray background shift */
+.btn-view-details:hover {
+  background: #E5E7EB;
+  color: #374151;
+  border-color: #E5E7EB;
+  transform: scale(1.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-view-details:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
+.btn-view-details:active {
+  transform: scale(0.98);
+  box-shadow: none;
+  background: #D1D5DB;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+@media (max-width: 640px) {
+  .product-card-premium {
+    border-radius: 12px;
+  }
+
+  .product-info {
+    padding: 16px;
+  }
+
+  .category-badge-overlay {
+    font-size: 9px;
+    padding: 6px 12px;
+    top: 12px;
+    left: 12px;
+  }
+
+  .product-image {
+    padding: 20px;
+  }
+
+  .product-title {
+    font-size: 15px;
+  }
+
+  .product-brand {
+    font-size: 12px;
+  }
+
+  .price-amount {
+    font-size: 20px;
+  }
+
+  .stock-indicator {
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+
+  .btn-add-to-cart,
+  .btn-view-details {
+    padding: 12px 18px;
+    font-size: 13px;
+    min-height: 42px;
+  }
+
+  .btn-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .price-stock-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .product-actions-premium {
+    gap: 8px;
+  }
+
+  .product-title {
+    font-size: 14px;
+  }
+
+  .price-amount {
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,1867 @@
+/* ===============================================
+   MODERN NAVBAR - SOLID DARK BLUE
+   Clean, Premium E-Commerce Header
+   =============================================== */
+
+/* ===========================================
+   NAVBAR CONTAINER - CLEAN WHITE
+   =========================================== */
+.navbar {
+    background: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease-in-out;
+    width: 100%;
+    animation: navbarSlideDown 0.5s ease-out;
+}
+
+@keyframes navbarSlideDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Subtle accent line */
+.navbar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(59, 130, 246, 0.5) 50%,
+            transparent 100%);
+    opacity: 0.6;
+}
+
+.navbar-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 12px 32px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 28px;
+}
+
+/* ===========================================
+   BRAND SECTION - GRADIENT LOGO
+   =========================================== */
+.nav-left {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    padding: 6px 14px 6px 6px;
+    border-radius: 14px;
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.08) 0%,
+            rgba(59, 130, 246, 0.06) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.navbar-brand:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.1) 0%,
+            rgba(59, 130, 246, 0.08) 100%);
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.15);
+}
+
+.logo-pill {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow:
+        0 4px 16px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease-in-out;
+}
+
+.navbar-brand:hover .logo-pill {
+    transform: scale(1.05) rotate(-2deg);
+    box-shadow:
+        0 6px 20px rgba(139, 92, 246, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.brand-text {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #111827;
+    transition: all 0.3s ease-in-out;
+}
+
+.navbar-brand:hover .brand-text {
+    filter: brightness(1.1);
+}
+
+/* ===========================================
+   NAVIGATION MENU - MINIMAL STYLE
+   =========================================== */
+.nav-center {
+    display: flex;
+    justify-content: center;
+}
+
+.navbar-menu {
+    display: flex;
+    list-style: none;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+
+.nav-link {
+    position: relative;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1F2937 !important;
+    padding: 10px 18px;
+    border-radius: 12px;
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    transition: all 0.3s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: transparent;
+}
+
+/* Subtle background on hover */
+.nav-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.08) 0%,
+            rgba(59, 130, 246, 0.06) 100%);
+    border-radius: 12px;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.3s ease-in-out;
+}
+
+.nav-link:hover::before {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.nav-link:hover {
+    color: #6366F1 !important;
+    transform: translateY(-2px);
+}
+
+/* Active State - Gradient Background with White Text */
+.nav-link.active {
+    color: #FFFFFF !important;
+    background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+    box-shadow:
+        0 4px 16px rgba(139, 92, 246, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    animation: activePillPop 0.3s ease-out;
+}
+
+.nav-link.active::before {
+    display: none;
+}
+
+.nav-link.active:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 6px 20px rgba(139, 92, 246, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+@keyframes activePillPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Click Effect */
+.nav-link:active {
+    transform: scale(0.98);
+}
+
+/* ===========================================
+   CART BUTTON - GLASSMORPHISM DESIGN
+   =========================================== */
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    /* Increased spacing between cart and profile */
+}
+
+.cart-button {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    /* Perfect circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #3B82F6 100%);
+    /* Purple to Blue gradient */
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    /* Neon gradient border */
+    color: #FFFFFF !important;
+    text-decoration: none;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(16px) saturate(180%);
+    /* Enhanced glassmorphism */
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow:
+        0 12px 32px rgba(139, 92, 246, 0.5),
+        0 0 28px rgba(139, 92, 246, 0.4),
+        0 0 48px rgba(139, 92, 246, 0.2),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+    animation: cartFloat 3s ease-in-out infinite;
+    /* Subtle floating */
+    cursor: pointer;
+}
+
+/* Subtle floating animation */
+@keyframes cartFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Ripple effect on click */
+.cart-button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.5s ease-out;
+}
+
+.cart-button:active::after {
+    opacity: 1;
+    transform: scale(2.5);
+    transition: 0s;
+}
+
+/* Shimmer effect */
+.cart-button .shimmer {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.25) 50%,
+            rgba(255, 255, 255, 0) 100%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+    border-radius: 14px;
+}
+
+.cart-button:hover .shimmer {
+    transform: translateX(100%);
+}
+
+.cart-button:hover {
+    transform: translateY(-4px) scale(1.12);
+    /* Enhanced scale animation */
+    animation: none;
+    /* Stop floating on hover */
+    box-shadow:
+        0 18px 48px rgba(139, 92, 246, 0.65),
+        0 0 52px rgba(139, 92, 246, 0.55),
+        0 0 80px rgba(139, 92, 246, 0.35),
+        0 0 120px rgba(139, 92, 246, 0.2),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    /* Intense neon glow */
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cart Icon - White and Visible */
+.cart-icon {
+    position: relative;
+    z-index: 1;
+    width: 26px;
+    height: 26px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #FFFFFF !important;
+    stroke: #FFFFFF !important;
+    fill: none;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
+}
+
+/* Ensure circles are filled */
+.cart-icon circle {
+    fill: #FFFFFF !important;
+    stroke: none !important;
+}
+
+/* Bounce animation on hover */
+.cart-button:hover .cart-icon {
+    animation: cartBounce 0.6s ease;
+    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.6));
+}
+
+@keyframes cartBounce {
+
+    0%,
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    25% {
+        transform: scale(1.15) rotate(-8deg);
+    }
+
+    50% {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    75% {
+        transform: scale(1.15) rotate(-3deg);
+    }
+}
+
+/* Shake animation when item added (can be triggered via JS) */
+@keyframes cartShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-3px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(3px);
+    }
+}
+
+.cart-button.cart-shake {
+    animation: cartShake 0.5s ease;
+}
+
+.cart-button:active {
+    transform: scale(0.95);
+}
+
+/* Tooltip for cart button */
+.cart-button-wrapper {
+    position: relative;
+}
+
+.cart-button-wrapper::before {
+    content: 'View Cart';
+    position: absolute;
+    bottom: -45px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    padding: 8px 14px;
+    background: rgba(15, 23, 42, 0.95);
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.cart-button-wrapper:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+    bottom: -48px;
+}
+
+/* Cart Badge - Circular with Red Gradient and Pulse */
+.cart-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    /* Red gradient */
+    color: #FFFFFF !important;
+    border-radius: 50%;
+    /* Perfect circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    box-shadow:
+        0 4px 16px rgba(239, 68, 68, 0.7),
+        0 0 20px rgba(239, 68, 68, 0.5),
+        0 0 0 3px rgba(255, 255, 255, 0.95);
+    animation: badgePopIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 2;
+}
+
+/* Badge pop-in animation */
+@keyframes badgePopIn {
+    0% {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1.3);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Badge pulse animation when count changes */
+@keyframes badgePulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow:
+            0 4px 16px rgba(239, 68, 68, 0.7),
+            0 0 20px rgba(239, 68, 68, 0.5),
+            0 0 0 3px rgba(255, 255, 255, 0.95);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow:
+            0 6px 24px rgba(239, 68, 68, 0.9),
+            0 0 32px rgba(239, 68, 68, 0.7),
+            0 0 0 4px rgba(255, 255, 255, 1);
+    }
+}
+
+/* Apply pulse when badge appears */
+.cart-badge {
+    animation: badgePopIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), badgePulse 0.6s ease-in-out 0.5s, badgePulse 2s ease-in-out infinite 1.5s;
+}
+
+/* ===========================================
+   PROFILE CHIP - PREMIUM INDIGO-VIOLET GRADIENT
+   =========================================== */
+.profile-chip {
+    height: 48px;
+    padding: 6px 18px 6px 6px;
+    border-radius: 24px;
+    /* Rounded pill shape */
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    /* Indigo to Violet gradient */
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    color: #FFFFFF !important;
+    /* White text */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    /* Bold username */
+    font-size: 15px;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(12px) saturate(180%);
+    /* Enhanced glassmorphism */
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    box-shadow:
+        0 6px 24px rgba(79, 70, 229, 0.4),
+        0 0 20px rgba(124, 58, 237, 0.3),
+        inset 0 2px 4px rgba(255, 255, 255, 0.15);
+    /* Soft inner shadow */
+}
+
+.profile-chip:hover {
+    transform: translateY(-3px) scale(1.05);
+    /* Enhanced hover transition */
+    background: linear-gradient(135deg, #4338CA 0%, #7C3AED 100%);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow:
+        0 10px 36px rgba(79, 70, 229, 0.55),
+        0 0 28px rgba(124, 58, 237, 0.4),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2);
+}
+
+.profile-chip.active {
+    background: linear-gradient(135deg, #3730A3 0%, #6D28D9 100%);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #FFFFFF !important;
+    box-shadow:
+        0 8px 32px rgba(79, 70, 229, 0.65),
+        0 0 24px rgba(109, 40, 217, 0.5),
+        inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    /* Glassmorphism background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 800;
+    color: #FFFFFF !important;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    /* Gradient glow ring */
+    box-shadow:
+        0 4px 16px rgba(139, 92, 246, 0.3),
+        0 0 16px rgba(139, 92, 246, 0.2),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.profile-chip:hover .avatar-circle {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow:
+        0 6px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.profile-name {
+    font-weight: 700;
+    /* Bold username text */
+    letter-spacing: 0.3px;
+    color: #FFFFFF !important;
+    transition: all 0.3s ease-in-out;
+}
+
+.profile-chip.active .profile-name {
+    color: #FFFFFF !important;
+}
+
+.dropdown-arrow {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.3s ease-in-out;
+}
+
+.profile-chip:hover .dropdown-arrow {
+    color: #FFFFFF !important;
+}
+
+.profile-chip.active .dropdown-arrow {
+    transform: rotate(180deg);
+    color: #FFFFFF !important;
+}
+
+/* ===========================================
+   AUTH DROPDOWN MENU - WHITE BACKGROUND
+   =========================================== */
+.auth-dropdown-wrapper {
+    position: relative;
+}
+
+.auth-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    background: #FFFFFF;
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 16px;
+    box-shadow:
+        0 12px 40px rgba(139, 92, 246, 0.12),
+        0 4px 12px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    min-width: 240px;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+    pointer-events: none;
+    transition: all 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+.auth-dropdown-menu.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.dropdown-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.06) 0%,
+            rgba(59, 130, 246, 0.04) 100%);
+}
+
+.user-greeting {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94A3B8 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    color: #475569 !important;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    gap: 12px;
+    position: relative;
+}
+
+.dropdown-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #8B5CF6 0%, #3B82F6 100%);
+    transform: scaleY(0);
+    transition: transform 0.2s ease-in-out;
+    border-radius: 0 3px 3px 0;
+}
+
+.dropdown-item:hover::before {
+    transform: scaleY(1);
+}
+
+.dropdown-item:hover {
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.08) 0%,
+            rgba(59, 130, 246, 0.06) 100%);
+    color: #6366F1 !important;
+    padding-left: 24px;
+}
+
+.dropdown-item svg {
+    width: 20px;
+    height: 20px;
+    transition: all 0.2s ease-in-out;
+    color: #94A3B8 !important;
+}
+
+.dropdown-item:hover svg {
+    transform: scale(1.1);
+    color: #6366F1 !important;
+}
+
+.logout-item {
+    color: #EF4444 !important;
+    border-top: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.logout-item:hover {
+    background: rgba(239, 68, 68, 0.06);
+    color: #DC2626 !important;
+}
+
+.logout-item svg {
+    color: #EF4444 !important;
+}
+
+.logout-item:hover svg {
+    color: #DC2626 !important;
+}
+
+.logout-item::before {
+    background: linear-gradient(180deg, #EF4444 0%, #DC2626 100%);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(139, 92, 246, 0.15) 50%,
+            transparent 100%);
+    margin: 4px 0;
+}
+
+/* ===========================================
+   MOBILE MENU TOGGLE
+   =========================================== */
+.menu-toggle {
+    display: none;
+    width: 44px;
+    height: 44px;
+    border: 1.5px solid rgba(139, 92, 246, 0.2);
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.08) 0%,
+            rgba(59, 130, 246, 0.06) 100%);
+    border-radius: 12px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-direction: column;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+.menu-toggle:hover {
+    background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+    border-color: transparent;
+    transform: scale(1.05);
+}
+
+.menu-toggle-bar {
+    width: 20px;
+    height: 2.5px;
+    background: #6366F1 !important;
+    border-radius: 2px;
+    transition: all 0.3s ease-in-out;
+}
+
+.menu-toggle:hover .menu-toggle-bar {
+    background: #FFFFFF !important;
+}
+
+.menu-toggle.open .menu-toggle-bar:nth-child(1) {
+    transform: translateY(7.5px) rotate(45deg);
+}
+
+.menu-toggle.open .menu-toggle-bar:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.menu-toggle.open .menu-toggle-bar:nth-child(3) {
+    transform: translateY(-7.5px) rotate(-45deg);
+}
+
+/* ===========================================
+   OVERLAY
+   =========================================== */
+.nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 90;
+}
+
+.nav-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ===========================================
+   RESPONSIVE DESIGN
+   =========================================== */
+@media (max-width: 960px) {
+    .navbar-inner {
+        grid-template-columns: auto auto;
+        justify-content: space-between;
+        padding: 12px 20px;
+    }
+
+    .nav-center {
+        display: none;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    .navbar-menu {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        width: min(340px, 85vw);
+        background: linear-gradient(180deg,
+                rgba(255, 255, 255, 0.98) 0%,
+                rgba(249, 250, 251, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 100px 24px 32px;
+        gap: 8px;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: -8px 0 40px rgba(139, 92, 246, 0.15);
+        border-left: 1px solid rgba(139, 92, 246, 0.15);
+    }
+
+    .navbar-menu.open {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    .nav-link {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+
+    .nav-link.active {
+        background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+        color: #FFFFFF !important;
+    }
+
+    .brand-text {
+        font-size: 18px;
+    }
+
+    .cart-button,
+    .profile-chip {
+        height: 46px;
+    }
+
+    .cart-button {
+        width: 46px;
+    }
+}
+
+@media (max-width: 640px) {
+    .navbar-inner {
+        padding: 10px 16px;
+        gap: 12px;
+    }
+
+    .nav-right {
+        gap: 14px;
+        /* Reduced spacing on mobile */
+    }
+
+    .brand-text {
+        display: none;
+    }
+
+    .logo-pill {
+        width: 38px;
+        height: 38px;
+    }
+
+    .navbar-brand {
+        padding: 6px;
+    }
+
+    .profile-name {
+        display: none;
+    }
+
+    .cart-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .profile-chip {
+        padding: 5px;
+        width: 44px;
+        height: 44px;
+    }
+}
+
+.navbar {
+    background: linear-gradient(135deg,
+            rgba(10, 22, 40, 0.98) 0%,
+            rgba(15, 36, 56, 0.95) 50%,
+            rgba(10, 22, 40, 0.98) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        0 1px 3px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease-in-out;
+    width: 100%;
+    animation: navbarSlideDown 0.5s ease-out;
+}
+
+@keyframes navbarSlideDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.navbar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(139, 92, 246, 0.4) 50%,
+            transparent 100%);
+    opacity: 0.5;
+}
+
+.navbar-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 10px 32px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 28px;
+}
+
+/* ===========================================
+   BRAND SECTION - WHITE TEXT
+   =========================================== */
+.nav-left {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    padding: 6px 14px 6px 6px;
+    border-radius: 12px;
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.08) 0%,
+            rgba(59, 130, 246, 0.05) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.navbar-brand:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.12) 0%,
+            rgba(59, 130, 246, 0.08) 100%);
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+}
+
+.logo-pill {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow:
+        0 4px 12px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease-in-out;
+}
+
+.navbar-brand:hover .logo-pill {
+    transform: scale(1.05);
+    box-shadow:
+        0 6px 16px rgba(139, 92, 246, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.brand-text {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #FFFFFF !important;
+    transition: all 0.3s ease-in-out;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-brand:hover .brand-text {
+    text-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+/* ===========================================
+   NAVIGATION MENU - WHITE TEXT ONLY
+   =========================================== */
+.nav-center {
+    display: flex;
+    justify-content: center;
+}
+
+.navbar-menu {
+    display: flex;
+    list-style: none;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+
+.nav-link {
+    position: relative;
+    font-weight: 600;
+    font-size: 15px;
+    color: #FFFFFF !important;
+    padding: 10px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: transparent;
+}
+
+/* Subtle background on hover */
+.nav-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.3s ease-in-out;
+}
+
+.nav-link:hover::before {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.nav-link:hover {
+    color: #FFFFFF !important;
+    transform: translateY(-2px) scale(1.03);
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+/* Animated underline */
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%);
+    border-radius: 2px;
+    transform: translateX(-50%);
+    transition: width 0.3s ease-in-out;
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+}
+
+.nav-link:hover::after {
+    width: 50%;
+}
+
+/* Active State - Gradient Background */
+.nav-link.active {
+    color: #FFFFFF !important;
+    background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+    box-shadow:
+        0 4px 12px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    animation: activePillPop 0.3s ease-out;
+}
+
+.nav-link.active::before {
+    display: none;
+}
+
+.nav-link.active::after {
+    display: none;
+}
+
+.nav-link.active:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 6px 16px rgba(139, 92, 246, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+@keyframes activePillPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Click Effect */
+.nav-link:active {
+    transform: scale(0.98);
+}
+
+/* ===========================================
+   CART BUTTON - GLASSMORPHISM (ALTERNATE)
+   =========================================== */
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+.cart-button {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e3a8a 0%, #6b21a8 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #FFFFFF !important;
+    text-decoration: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    box-shadow:
+        0 8px 32px rgba(107, 33, 168, 0.4),
+        0 0 48px rgba(107, 33, 168, 0.25),
+        inset 0 1px 2px rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+}
+
+.cart-button:hover {
+    transform: translateY(-2px) scale(1.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow:
+        0 12px 48px rgba(107, 33, 168, 0.6),
+        0 0 64px rgba(107, 33, 168, 0.4),
+        inset 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.cart-icon {
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease-in-out;
+    font-size: 22px;
+    color: #FFFFFF !important;
+}
+
+.cart-button:hover .cart-icon {
+    transform: scale(1.1) rotate(-3deg);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+}
+
+.cart-button:active {
+    transform: scale(0.95);
+}
+
+/* Cart Badge - Circular */
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    background: #EF4444;
+    color: #FFFFFF !important;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    box-shadow:
+        0 4px 16px rgba(239, 68, 68, 0.6),
+        0 0 0 3px rgba(255, 255, 255, 1);
+    animation: badgePopIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 2;
+}
+
+@keyframes badgePopIn {
+    0% {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ===========================================
+   SIGN IN BUTTON - WHITE TEXT
+   =========================================== */
+.login-btn {
+    position: relative;
+    height: 44px;
+    padding: 0 24px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);
+    border: none;
+    color: #FFFFFF !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease-in-out;
+    box-shadow:
+        0 4px 12px rgba(139, 92, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+    animation: buttonSlideIn 0.5s ease-out 0.1s backwards;
+}
+
+@keyframes buttonSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(15px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Gradient shimmer effect */
+.login-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.15) 50%,
+            rgba(255, 255, 255, 0) 100%);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease-in-out;
+}
+
+.login-btn:hover::before {
+    transform: translateX(100%);
+}
+
+.login-btn:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow:
+        0 6px 20px rgba(139, 92, 246, 0.4),
+        0 0 30px rgba(139, 92, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.login-btn:active {
+    transform: scale(0.98);
+}
+
+.user-icon {
+    font-size: 20px;
+    transition: transform 0.3s ease-in-out;
+    color: #FFFFFF !important;
+}
+
+.login-btn:hover .user-icon {
+    transform: scale(1.1);
+}
+
+.login-text {
+    position: relative;
+    z-index: 1;
+    color: #FFFFFF !important;
+}
+
+/* ===========================================
+   PROFILE CHIP - GLASSMORPHISM (ALTERNATE)
+   =========================================== */
+.profile-chip {
+    height: 48px;
+    padding: 6px 18px 6px 6px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #FFFFFF !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 15px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    box-shadow:
+        0 4px 20px rgba(79, 70, 229, 0.35),
+        inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.profile-chip:hover {
+    transform: translateY(-2px) scale(1.04);
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow:
+        0 8px 32px rgba(79, 70, 229, 0.5),
+        inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.profile-chip.active {
+    background: linear-gradient(135deg, #3730a3 0%, #4338ca 100%);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow:
+        0 6px 28px rgba(79, 70, 229, 0.6),
+        inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #FFFFFF !important;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: all 0.3s ease-in-out;
+}
+
+.profile-chip:hover .avatar-circle {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow:
+        0 6px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.profile-name {
+    color: #FFFFFF !important;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease-in-out;
+}
+
+.profile-chip:hover .profile-name {
+    text-shadow: none;
+}
+
+.dropdown-arrow {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.3s ease-in-out;
+    font-size: 14px;
+}
+
+.profile-chip:hover .dropdown-arrow {
+    color: #FFFFFF !important;
+}
+
+.profile-chip.active .dropdown-arrow {
+    transform: rotate(180deg);
+    color: #FFFFFF !important;
+}
+
+/* ===========================================
+   AUTH DROPDOWN MENU
+   =========================================== */
+.auth-dropdown-wrapper {
+    position: relative;
+}
+
+.auth-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    background: rgba(15, 36, 56, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    min-width: 240px;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+    pointer-events: none;
+    transition: all 0.3s ease-in-out;
+    overflow: hidden;
+}
+
+.auth-dropdown-menu.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.dropdown-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.user-greeting {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    color: #FFFFFF !important;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    gap: 12px;
+    position: relative;
+}
+
+.dropdown-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, #8B5CF6 0%, #3B82F6 100%);
+    transform: scaleY(0);
+    transition: transform 0.2s ease-in-out;
+}
+
+.dropdown-item:hover::before {
+    transform: scaleY(1);
+}
+
+.dropdown-item:hover {
+    background: rgba(139, 92, 246, 0.12);
+    color: #FFFFFF !important;
+    padding-left: 24px;
+}
+
+.dropdown-item svg {
+    width: 20px;
+    height: 20px;
+    transition: all 0.2s ease-in-out;
+    color: #FFFFFF !important;
+}
+
+.dropdown-item:hover svg {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.5));
+}
+
+.logout-item {
+    color: #FCA5A5 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logout-item:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #FEE2E2 !important;
+}
+
+.logout-item::before {
+    background: linear-gradient(180deg, #EF4444 0%, #DC2626 100%);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.15) 50%,
+            transparent 100%);
+    margin: 4px 0;
+}
+
+/* ===========================================
+   MOBILE MENU TOGGLE
+   =========================================== */
+.menu-toggle {
+    display: none;
+    width: 42px;
+    height: 42px;
+    border: 1.5px solid rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-direction: column;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+.menu-toggle:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: scale(1.05);
+}
+
+.menu-toggle-bar {
+    width: 20px;
+    height: 2.5px;
+    background: #FFFFFF !important;
+    border-radius: 2px;
+    transition: all 0.3s ease-in-out;
+}
+
+.menu-toggle.open .menu-toggle-bar:nth-child(1) {
+    transform: translateY(7.5px) rotate(45deg);
+}
+
+.menu-toggle.open .menu-toggle-bar:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.menu-toggle.open .menu-toggle-bar:nth-child(3) {
+    transform: translateY(-7.5px) rotate(-45deg);
+}
+
+/* ===========================================
+   OVERLAY
+   =========================================== */
+.nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 90;
+}
+
+.nav-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ===========================================
+   SEARCH BOX (if needed)
+   =========================================== */
+.search-box {
+    display: flex;
+    align-items: center;
+    margin: 0 auto;
+}
+
+.search-form {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    height: 48px;
+    width: 320px;
+    padding: 0 20px 0 48px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.08);
+    backdrop-filter: blur(10px);
+    color: #FFFFFF !important;
+    font-size: 15px;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+    font-weight: 400;
+}
+
+.search-input:hover {
+    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(139, 92, 246, 0.12);
+}
+
+.search-input:focus {
+    width: 400px;
+    border-color: rgba(139, 92, 246, 0.6);
+    background: rgba(139, 92, 246, 0.15);
+    box-shadow:
+        0 4px 16px rgba(139, 92, 246, 0.25),
+        0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 18px;
+    pointer-events: none;
+    transition: color 0.3s ease-in-out;
+}
+
+.search-form:focus-within .search-icon {
+    color: #FFFFFF !important;
+}
+
+/* ===========================================
+   RESPONSIVE DESIGN
+   =========================================== */
+@media (max-width: 960px) {
+    .navbar-inner {
+        grid-template-columns: auto auto;
+        justify-content: space-between;
+        padding: 14px 24px;
+    }
+
+    .nav-center {
+        display: none;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    .navbar-menu {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        width: min(340px, 85vw);
+        background: linear-gradient(180deg,
+                rgba(10, 22, 40, 0.98) 0%,
+                rgba(15, 36, 56, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 100px 24px 32px;
+        gap: 12px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 100;
+        box-shadow: -8px 0 40px rgba(0, 0, 0, 0.5);
+        border-left: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .navbar-menu.open {
+        transform: translateX(0);
+    }
+
+    .nav-link {
+        width: 100%;
+        justify-content: flex-start;
+        font-size: 16px;
+        padding: 16px 20px;
+    }
+
+    .nav-link::after {
+        left: 20px;
+        transform: none;
+    }
+
+    .nav-link:hover::after {
+        width: 40px;
+    }
+}
+
+@media (max-width: 600px) {
+    .navbar-inner {
+        padding: 12px 16px;
+    }
+
+    .brand-text {
+        font-size: 18px;
+    }
+
+    .logo-pill {
+        width: 42px;
+        height: 42px;
+    }
+
+    .cart-button,
+    .login-btn,
+    .profile-chip {
+        height: 46px;
+    }
+
+    .cart-button {
+        width: 46px;
+    }
+
+    .login-btn {
+        padding: 0 20px;
+        font-size: 14px;
+    }
+
+    .profile-name {
+        display: none;
+    }
+
+    .dropdown-arrow {
+        display: none;
+    }
+
+    .cart-badge {
+        min-width: 20px;
+        height: 20px;
+        font-size: 11px;
+        top: -4px;
+        right: -4px;
+    }
+}
+
+/* ===========================================
+   ACCESSIBILITY
+   =========================================== */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus Visible for Keyboard Navigation */
+.nav-link:focus-visible,
+.cart-button:focus-visible,
+.login-btn:focus-visible,
+.profile-chip:focus-visible {
+    outline: 2px solid #8B5CF6;
+    outline-offset: 4px;
+}
+
+/* ===========================================
+   FORCE LIGHT THEME DROPDOWN - FIX VISIBILITY
+   =========================================== */
+.auth-dropdown-menu {
+    background: #FFFFFF !important;
+    border: 1px solid rgba(139, 92, 246, 0.15) !important;
+}
+
+.dropdown-header {
+    background: linear-gradient(135deg,
+            rgba(139, 92, 246, 0.06) 0%,
+            rgba(59, 130, 246, 0.04) 100%) !important;
+}
+
+.user-greeting {
+    color: #94A3B8 !important;
+}
+
+.dropdown-item {
+    color: #475569 !important;
+}
+
+.dropdown-item svg {
+    color: #94A3B8 !important;
+}
+
+.dropdown-item:hover {
+    color: #6366F1 !important;
+}
+
+.dropdown-item:hover svg {
+    color: #6366F1 !important;
+}
+
+.logout-item {
+    color: #EF4444 !important;
+}
+
+.logout-item svg {
+    color: #EF4444 !important;
+}
+
+.logout-item:hover {
+    color: #DC2626 !important;
+}
+
+.logout-item:hover svg {
+    color: #DC2626 !important;
+}

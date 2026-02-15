@@ -1,0 +1,137 @@
+/**
+ * Google Login Button - Official Style
+ * Based on Google's official sign-in button guidelines
+ */
+
+.google-login-container {
+  width: 100%;
+  margin-top: 28px;
+  margin-bottom: 20px;
+}
+
+.google-divider-text {
+  text-align: center;
+  color: #5f6368;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  margin-top: 24px;
+}
+
+.google-button-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Google OAuth Button Styling - Official Look */
+.google-button-wrapper > div {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Target the button element directly */
+:global(.google_button) {
+  width: 100% !important;
+  height: 40px !important;
+  padding: 0 24px !important;
+  border: 1px solid #dadce0 !important;
+  border-radius: 4px !important;
+  background-color: #ffffff !important;
+  color: #3c4043 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  box-sizing: border-box !important;
+}
+
+:global(.google_button:hover) {
+  background-color: #f8f9fa !important;
+  border-color: #d2d3d4 !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+:global(.google_button:active) {
+  background-color: #f1f3f4 !important;
+  border-color: #dadce0 !important;
+}
+
+:global(.google_button:focus) {
+  outline: 1px solid #4285f4 !important;
+  outline-offset: 2px !important;
+}
+
+/* Google Logo Icon */
+:global(.google_button > div:first-child) {
+  width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Button Text */
+:global(.google_button span) {
+  color: #3c4043 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.25px !important;
+}
+
+/* Loading state */
+:global(.google_button[disabled]) {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .google-login-container {
+    margin-top: 24px;
+    margin-bottom: 16px;
+  }
+
+  .google-divider-text {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  :global(.google_button) {
+    height: 40px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .google-login-container {
+    margin-top: 20px;
+    margin-bottom: 12px;
+  }
+
+  :global(.google_button) {
+    height: 40px !important;
+    padding: 0 16px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* Ensure full width container */
+.google-button-wrapper {
+  width: 100%;
+  padding: 0;
+}
+
+.google-button-wrapper > div > div {
+  width: 100% !important;
+}
+
+.google-button-wrapper > div > div > button {
+  width: 100% !important;
+}

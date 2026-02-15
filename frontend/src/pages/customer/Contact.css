@@ -1,0 +1,563 @@
+/* ===============================================
+   CONTACT PAGE - PREMIUM REDESIGN
+   Dark Typography, Clean Layout
+   =============================================== */
+
+:root {
+  --text-dark: #111827;
+  /* Dark charcoal */
+  --text-muted: #64748b;
+  /* Muted dark gray */
+  --text-secondary: #475569;
+  --bg-light: #f8fafc;
+  --bg-card: #f1f5f9;
+  --border-soft: #e2e8f0;
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  /* Blue -> Indigo */
+  --gradient-hover: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  --shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 15px rgba(0, 0, 0, 0.04);
+  --transition: all 0.3s ease;
+}
+
+/* Remove top spacing - Navbar flush to top */
+.contact-page {
+  background: var(--bg-light);
+  min-height: 100vh;
+  padding: 0;
+  /* No top padding */
+  margin: 0;
+}
+
+.contact-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px 60px;
+  /* Padding only on content, not above navbar */
+}
+
+/* ===============================================
+   HEADER SECTION
+   =============================================== */
+
+.contact-header {
+  text-align: center;
+  margin-bottom: 48px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+.contact-header h1 {
+  font-size: 2.5rem;
+  color: var(--text-dark);
+  /* Dark charcoal - NOT blue */
+  margin-bottom: 12px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.contact-header p {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  /* Muted dark gray */
+  font-weight: 400;
+}
+
+/* ===============================================
+   MAIN CONTACT CARD
+   =============================================== */
+
+.contact-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+/* ===============================================
+   TWO-COLUMN LAYOUT
+   =============================================== */
+
+.contact-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-height: 600px;
+}
+
+/* ===============================================
+   LEFT SIDE - CONTACT INFO SECTION
+   =============================================== */
+
+.contact-info {
+  background: var(--bg-card);
+  /* Very light gray */
+  padding: 48px 40px;
+  border-right: 1px solid var(--border-soft);
+}
+
+.contact-info h2 {
+  font-size: 1.5rem;
+  color: var(--text-dark);
+  /* Dark charcoal - NOT blue */
+  margin-bottom: 32px;
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.contact-info h2::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+}
+
+/* ===============================================
+   INFO CARDS - INDIVIDUAL CARDS WITH ICONS
+   =============================================== */
+
+.info-card {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  transition: var(--transition);
+  border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+.info-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Icon Circle */
+.info-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.address-icon {
+  background: #fef3c7;
+}
+
+.phone-icon {
+  background: #d1fae5;
+}
+
+.email-icon {
+  background: #fee2e2;
+}
+
+.hours-icon {
+  background: #dbeafe;
+}
+
+.info-card:hover .info-icon-circle {
+  transform: scale(1.05);
+}
+
+/* Info Content */
+.info-content {
+  flex: 1;
+}
+
+.info-content h3 {
+  font-size: 1rem;
+  color: var(--text-dark);
+  /* Dark text */
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.info-content p {
+  color: var(--text-muted);
+  /* Muted dark gray */
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ===============================================
+   BUSINESS HOURS - CLEAN ALIGNMENT
+   =============================================== */
+
+.hours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hour-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.hour-item:last-child {
+  border-bottom: none;
+}
+
+.hour-item .day {
+  font-weight: 500;
+  color: var(--text-dark);
+  /* Dark text */
+  font-size: 0.9rem;
+}
+
+.hour-item .time {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.hour-item .time.closed {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* ===============================================
+   RIGHT SIDE - CONTACT FORM
+   =============================================== */
+
+.contact-form-section {
+  padding: 48px 40px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ===============================================
+   FORM GROUPS & INPUTS
+   =============================================== */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  /* Dark gray - NOT blue */
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 14px 16px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #fafafa;
+  color: var(--text-dark);
+  /* Dark text input */
+  transition: var(--transition);
+  outline: none;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--text-muted);
+  /* Muted dark gray placeholder */
+}
+
+/* Input Focus States */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  background: white;
+  border-color: #6366f1;
+  /* Indigo accent */
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+/* Textarea Styling */
+.form-group textarea {
+  resize: vertical;
+  min-height: 140px;
+  font-family: inherit;
+}
+
+/* ===============================================
+   SUCCESS POPUP
+   =============================================== */
+
+.success-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  animation: slideInRight 0.4s ease-out;
+}
+
+.success-content {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(39, 174, 96, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.success-checkmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* ===============================================
+   SUBMIT BUTTON - Premium Gradient
+   =============================================== */
+
+.submit-btn {
+  height: 46px;
+  padding: 0 24px;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--gradient-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===============================================
+   ANIMATIONS
+   =============================================== */
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ===============================================
+   RESPONSIVE DESIGN
+   =============================================== */
+
+@media (max-width: 768px) {
+  .contact-header h1 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  .contact-header p {
+    font-size: 1rem;
+  }
+
+  .contact-card {
+    border-radius: 16px;
+  }
+
+  .contact-content {
+    grid-template-columns: 1fr;
+    gap: 0;
+    min-height: auto;
+  }
+
+  .contact-info {
+    padding: 40px 25px;
+    border-right: none;
+    border-bottom: 1px solid #e0e8f0;
+  }
+
+  .contact-info h2 {
+    font-size: 1.5rem;
+    margin-bottom: 25px;
+  }
+
+  .contact-form-section {
+    padding: 40px 25px;
+  }
+
+  .info-card {
+    padding: 16px;
+    margin-bottom: 15px;
+  }
+
+  .info-icon-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 12px 14px;
+    font-size: 16px;
+    /* Prevents zoom on iOS */
+  }
+
+  .form-group textarea {
+    min-height: 120px;
+  }
+
+  .submit-btn {
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+
+  .success-popup {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+
+  .success-content {
+    padding: 16px 20px;
+    font-size: 0.9rem;
+  }
+
+  .success-checkmark {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .contact-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .contact-info {
+    padding: 30px 16px;
+  }
+
+  .contact-form-section {
+    padding: 30px 16px;
+  }
+
+  .contact-info h2 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+  }
+
+  .info-card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .info-icon-circle {
+    width: 45px;
+    height: 45px;
+    font-size: 18px;
+  }
+
+  .info-content h3 {
+    font-size: 1rem;
+  }
+
+  .info-content p {
+    font-size: 0.9rem;
+  }
+
+  .form-group label {
+    font-size: 0.9rem;
+  }
+
+  .submit-btn {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* ===============================================
+   ACCESSIBILITY
+   =============================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
