@@ -162,7 +162,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
               window.dispatchEvent(new CustomEvent('order-placed'));
               await fetchCart();
               onClose();
-              setTimeout(() => navigate('/orders'), 1500);
+              setTimeout(() => navigate('/orders', { state: { orderSuccess: true } }), 1500);
             } else {
               setError('Payment verification failed. Please contact support.');
               showError('Payment verification failed.');
@@ -290,7 +290,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
           window.dispatchEvent(new CustomEvent('order-placed'));
           await fetchCart();
           onClose();
-          setTimeout(() => navigate('/orders'), 1500);
+          setTimeout(() => navigate('/orders', { state: { orderSuccess: true } }), 1500);
         } else {
           setError(data.message || 'Failed to place order');
           showError(data.message || 'Failed to place order');

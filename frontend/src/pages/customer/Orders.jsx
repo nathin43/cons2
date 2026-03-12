@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useToast } from '../../hooks/useToast';
@@ -11,12 +11,30 @@ import './Orders.css';
  * View order history and status with 24-hour cancellation policy
  */
 const Orders = () => {
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [cancelModal, setCancelModal] = useState({ open: false, orderId: null, orderNumber: null });
   const [cancelling, setCancelling] = useState(false);
+  const [showOrderSuccess, setShowOrderSuccess] = useState(!!location.state?.orderSuccess);
+  const [dismissingSuccess, setDismissingSuccess] = useState(false);
   const { success, error: showError } = useToast();
+
+  const dismissSuccessOverlay = () => {
+    setDismissingSuccess(true);
+    setTimeout(() => {
+      setShowOrderSuccess(false);
+      setDismissingSuccess(false);
+    }, 420);
+  };
+
+  // Auto-dismiss success overlay after 3 seconds
+  useEffect(() => {
+    if (!showOrderSuccess) return;
+    const timer = setTimeout(() => dismissSuccessOverlay(), 3000);
+    return () => clearTimeout(timer);
+  }, [showOrderSuccess]);
 
   useEffect(() => {
     fetchOrders();
@@ -88,7 +106,9 @@ const Orders = () => {
     }
   };
 
-  if (loading) {
+  // Don't show the loading spinner if we came from a successful order —
+  // the success overlay should appear immediately without the spinner flash.
+  if (loading && !showOrderSuccess) {
     return (
       <>
         <Navbar />
@@ -110,10 +130,46 @@ const Orders = () => {
 
       <div className="orders-page">
         <div className="container">
-          <div className="orders-header">
-            <h1>My Orders</h1>
-            <p className="orders-subtitle">Track and manage your order history</p>
-          </div>
+
+          {/* ── Order Success Banner ── */}
+          {showOrderSuccess && (
+            <div className={`os-overlay${dismissingSuccess ? ' os-overlay--out' : ''}`} onClick={dismissSuccessOverlay}>
+              <div className="os-card" onClick={e => e.stopPropagation()}>
+                <div className="os-icon-wrap">
+                  <div className="os-icon-ring"></div>
+                  <div className="os-icon-bg">
+                    <svg className="os-check-svg" viewBox="0 0 52 52" fill="none">
+                      <circle className="os-check-circle" cx="26" cy="26" r="24" />
+                      <path className="os-check-path" d="M14 27l8 8 16-16" />
+                    </svg>
+                  </div>
+                </div>
+                <h2 className="os-title">Order Placed Successfully!</h2>
+                <p className="os-desc">Your order has been placed and will be processed shortly.</p>
+                <div className="os-chips">
+                  <span className="os-chip">📦 Processing</span>
+                  <span className="os-chip">🚚 Delivery Soon</span>
+                  <span className="os-chip">✅ Confirmed</span>
+                </div>
+                <button className="os-btn" onClick={dismissSuccessOverlay}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                  </svg>
+                  View My Orders
+                  <span className="os-btn__shimmer"></span>
+                </button>
+                <div className="os-progress">
+                  <div className="os-progress__bar"></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={`os-page-content${showOrderSuccess && !dismissingSuccess ? ' os-page-content--hidden' : ''}`}>
+            <div className="orders-header">
+              <h1>My Orders</h1>
+              <p className="orders-subtitle">Track and manage your order history</p>
+            </div>
 
           {/* Cancellation Policy Notice */}
           <div className="cancellation-policy-banner">
@@ -133,7 +189,12 @@ const Orders = () => {
             </div>
           )}
 
-          {orders.length === 0 ? (
+          {loading ? (
+            <div className="loading-spinner">
+              <div className="spinner"></div>
+              <p>Loading your orders...</p>
+            </div>
+          ) : orders.length === 0 ? (
             <div className="no-orders">
               <div className="no-orders-icon">📦</div>
               <h2>No orders yet</h2>
@@ -254,6 +315,7 @@ const Orders = () => {
               })}
             </div>
           )}
+          </div>{/* end os-page-content */}
         </div>
       </div>
 

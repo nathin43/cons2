@@ -269,7 +269,7 @@ const Checkout = () => {
         success('Order placed successfully! 🎉');
         window.dispatchEvent(new CustomEvent('order-placed'));
         await fetchCart();
-        setTimeout(() => navigate('/orders'), 1500);
+        setTimeout(() => navigate('/orders', { state: { orderSuccess: true } }), 1500);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to place order');
