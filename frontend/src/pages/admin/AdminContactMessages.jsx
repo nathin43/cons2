@@ -311,7 +311,7 @@ const AdminContactMessages = () => {
                     <td><span className="acm-type-chip">{getInquiryTypeLabel(msg.inquiryType)}</span></td>
                     <td>
                       <span className="acm-preview" title={msg.message}>
-                        {msg.message.length > 45 ? msg.message.substring(0, 45) + 'â€¦' : msg.message}
+                        {msg.message.length > 45 ? msg.message.substring(0, 45) + '...' : msg.message}
                       </span>
                     </td>
                     <td className="acm-date">{formatDate(msg.createdAt)}</td>
@@ -341,7 +341,7 @@ const AdminContactMessages = () => {
             <div className="acm-modal" onClick={e => e.stopPropagation()}>
               <div className="acm-modal-header">
                 <h2>Message Details</h2>
-                <button className="acm-modal-close" onClick={() => setShowModal(false)}>âœ•</button>
+                <button className="acm-modal-close" onClick={() => setShowModal(false)}>&times;</button>
               </div>
               <div className="acm-modal-body">
                 <div className="acm-detail-grid">
@@ -402,7 +402,7 @@ const AdminContactMessages = () => {
             <div className="acm-modal" onClick={e => e.stopPropagation()}>
               <div className="acm-modal-header">
                 <h2>Reply to Customer</h2>
-                <button className="acm-modal-close" onClick={() => setShowReplyModal(false)}>âœ•</button>
+                <button className="acm-modal-close" onClick={() => setShowReplyModal(false)}>&times;</button>
               </div>
               <div className="acm-modal-body">
                 <div className="acm-detail-grid">
@@ -441,7 +441,7 @@ const AdminContactMessages = () => {
               <div className="acm-modal-footer">
                 <button className="acm-btn acm-btn-outline" onClick={() => setShowReplyModal(false)} disabled={sendingReply}>Cancel</button>
                 <button className="acm-btn acm-btn-primary" onClick={handleSendReply} disabled={sendingReply || !replyMessage.trim()}>
-                  {sendingReply ? 'Sendingâ€¦' : 'Send Reply'}
+                  {sendingReply ? 'Sending...' : 'Send Reply'}
                 </button>
               </div>
             </div>
