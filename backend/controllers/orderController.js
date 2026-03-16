@@ -3,6 +3,7 @@ const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const Report = require('../models/Report');
 const Payment = require('../models/Payment');
+const Refund = require('../models/Refund');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const NotificationService = require('../services/notificationService');
@@ -418,6 +419,12 @@ exports.updateOrderStatus = async (req, res) => {
     console.log(`Updating order ${orderId}: status from ${order.orderStatus} to ${orderStatus}, totalAmount: ₹${order.totalAmount}`);
 
     order.orderStatus = orderStatus;
+    if (orderStatus === 'cancelled') {
+      order.cancelled = true;
+      order.cancelledAt = order.cancelledAt || new Date();
+      order.cancelledBy = order.cancelledBy || 'Admin';
+      order.cancelReason = order.cancelReason || 'Cancelled by admin';
+    }
 
     if (orderStatus === 'delivered') {
       order.deliveredAt = Date.now();
@@ -472,6 +479,8 @@ exports.updateOrderStatus = async (req, res) => {
  */
 exports.cancelOrder = async (req, res) => {
   try {
+    const { cancelReason, customCancelReason, supportMessage } = req.body || {};
+
     const order = await Order.findById(req.params.id);
 
     if (!order) {
@@ -497,6 +506,19 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
+    const selectedReason = String(cancelReason || '').trim();
+    const customReason = String(customCancelReason || '').trim();
+    const optionalSupportMessage = String(supportMessage || '').trim();
+    const isOtherReason = ['other', 'other reason'].includes(selectedReason.toLowerCase());
+    const finalCancelReason = isOtherReason ? customReason : selectedReason;
+
+    if (!finalCancelReason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a cancellation reason before cancelling the order.'
+      });
+    }
+
     // Restore product stock
     for (let item of order.items) {
       await Product.findByIdAndUpdate(item.product, {
@@ -504,8 +526,44 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
+    const cancelledBy = req.user?.role === 'admin' ? 'Admin' : 'User';
     order.orderStatus = 'cancelled';
+    order.cancelled = true;
+    order.cancelReason = finalCancelReason;
+    order.cancelledAt = new Date();
+    order.cancelledBy = cancelledBy;
     await order.save();
+
+    // Create a refund request automatically for paid orders.
+    if (order.paymentStatus === 'paid') {
+      try {
+        const existingRefund = await Refund.findOne({
+          order: order._id,
+          refundStatus: { $nin: ['rejected'] }
+        });
+
+        if (!existingRefund) {
+          await Refund.create({
+            order: order._id,
+            user: order.user,
+            amount: order.totalAmount,
+            reason: `Order cancelled by ${cancelledBy}. Reason: ${finalCancelReason}`,
+            refundStatus: 'processing',
+            adminNotes: optionalSupportMessage
+              ? `Auto-initiated refund after order cancellation. User message: ${optionalSupportMessage}`
+              : 'Auto-initiated refund after order cancellation'
+          });
+
+          // Persist refund state on payment record for transparency in user/admin flows.
+          await Payment.findOneAndUpdate(
+            { order: order._id },
+            { paymentStatus: 'refunded' }
+          );
+        }
+      } catch (refundError) {
+        console.error('Auto refund creation error (non-fatal):', refundError.message);
+      }
+    }
 
     // Notify admin of cancelled order
     try {
@@ -517,6 +575,7 @@ exports.cancelOrder = async (req, res) => {
           orderNumber: order.orderNumber,
           customerId: order.user,
           customerName: customer?.name || 'Customer',
+          cancellationMessage: optionalSupportMessage || null,
         });
       }
     } catch (notifError) {

@@ -99,6 +99,17 @@ const AdminOrders = () => {
     setExpandedOrders(prev => ({ ...prev, [orderId]: !prev[orderId] }));
   };
 
+  const formatCancelledDate = (value) => {
+    if (!value) return 'N/A';
+    return new Date(value).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace(',', ' -');
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
@@ -610,6 +621,30 @@ const AdminOrders = () => {
                         )}
                       </div>
                     </div>
+
+                    {order.orderStatus === 'cancelled' && (
+                      <div className="ao-cancelled-info-box">
+                        <h4 className="ao-cancelled-title"><span>🚫</span> Cancellation Details</h4>
+                        <div className="ao-cancelled-grid">
+                          <div className="ao-cancelled-row">
+                            <span className="ao-cancelled-label">Order Status</span>
+                            <span className="ao-cancelled-value ao-cancelled-value--status">Cancelled</span>
+                          </div>
+                          <div className="ao-cancelled-row">
+                            <span className="ao-cancelled-label">Cancelled By</span>
+                            <span className="ao-cancelled-value">{order.cancelledBy || 'User'}</span>
+                          </div>
+                          <div className="ao-cancelled-row">
+                            <span className="ao-cancelled-label">Cancellation Reason</span>
+                            <span className="ao-cancelled-value">{order.cancelReason || 'Not provided'}</span>
+                          </div>
+                          <div className="ao-cancelled-row">
+                            <span className="ao-cancelled-label">Cancelled Date</span>
+                            <span className="ao-cancelled-value">{formatCancelledDate(order.cancelledAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Order Items */}
                     <div className="ao-items-section">

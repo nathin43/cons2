@@ -109,10 +109,14 @@ class NotificationService {
    * Create order cancelled notification
    */
   static async notifyOrderCancelled(adminId, orderData) {
+    const messageSnippet = orderData.cancellationMessage
+      ? ` | Message: ${orderData.cancellationMessage}`
+      : '';
+
     return this.createNotification(adminId, {
       type: 'ORDER_CANCELLED',
       title: 'Order Cancelled by Customer',
-      description: `Order #${orderData.orderNumber} has been cancelled by ${orderData.customerName}`,
+      description: `Order #${orderData.orderNumber} has been cancelled by ${orderData.customerName}${messageSnippet}`,
       icon: 'x-circle',
       color: 'red',
       actionUrl: `/admin/orders/${orderData.orderId}`,
@@ -121,6 +125,7 @@ class NotificationService {
         orderNumber: orderData.orderNumber,
         customerId: orderData.customerId,
         customerName: orderData.customerName,
+        cancellationMessage: orderData.cancellationMessage || null,
       },
     });
   }

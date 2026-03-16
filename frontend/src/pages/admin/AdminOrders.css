@@ -1039,6 +1039,60 @@
   color: var(--ao-primary);
 }
 
+/* Cancellation detail block */
+.ao-cancelled-info-box {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+  border: 1.5px solid #fda4af;
+  border-radius: var(--ao-radius-sm);
+  padding: 16px;
+  box-shadow: var(--ao-shadow-sm);
+}
+
+.ao-cancelled-title {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #9f1239;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ao-cancelled-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.ao-cancelled-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.ao-cancelled-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9f1239;
+  white-space: nowrap;
+}
+
+.ao-cancelled-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4c0519;
+  text-align: right;
+}
+
+.ao-cancelled-value--status {
+  color: #be123c;
+}
+
 /* ================================================================
    EMPTY STATE
    ================================================================ */
@@ -1109,3 +1163,4 @@
     animation-duration: .01ms !important;
     transition-duration: .01ms !important;
   }
+}

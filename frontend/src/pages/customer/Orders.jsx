@@ -11,11 +11,35 @@ import './Orders.css';
  * View order history and status with 24-hour cancellation policy
  */
 const Orders = () => {
+  const cancellationReasonOptions = [
+    'Ordered by mistake',
+    'Found cheaper elsewhere',
+    'Delivery too long',
+    'Wrong item',
+    'Change address',
+    'Other reason'
+  ];
+
   const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [cancelModal, setCancelModal] = useState({ open: false, orderId: null, orderNumber: null });
+  const [cancelModal, setCancelModal] = useState({
+    open: false,
+    orderId: null,
+    orderNumber: null,
+    orderItems: [],
+    totalAmount: 0,
+    paymentMethod: '',
+    paymentStatus: '',
+    paymentId: '',
+    paidAmount: 0,
+    cancelReason: '',
+    customCancelReason: '',
+    sendSupportMessage: false,
+    supportMessage: '',
+    validationError: ''
+  });
   const [cancelling, setCancelling] = useState(false);
   const [showOrderSuccess, setShowOrderSuccess] = useState(!!location.state?.orderSuccess);
   const [dismissingSuccess, setDismissingSuccess] = useState(false);
@@ -84,18 +108,77 @@ const Orders = () => {
     return colors[status] || 'primary';
   };
 
-  const openCancelModal = (orderId, orderNumber) => {
-    setCancelModal({ open: true, orderId, orderNumber });
+  const openCancelModal = (order) => {
+    setCancelModal({
+      open: true,
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      orderItems: order.items || [],
+      totalAmount: order.totalAmount || order.totalPrice || 0,
+      paymentMethod: order.paymentMethod || '',
+      paymentStatus: order.paymentStatus || '',
+      paymentId:
+        order.razorpayPaymentId ||
+        order.paymentDetails?.paymentId ||
+        order.paymentDetails?.transactionId ||
+        order.paymentDetails?.razorpayPaymentId ||
+        '',
+      paidAmount: order.totalAmount || order.totalPrice || 0,
+      cancelReason: '',
+      customCancelReason: '',
+      sendSupportMessage: false,
+      supportMessage: '',
+      validationError: ''
+    });
   };
 
   const closeCancelModal = () => {
-    setCancelModal({ open: false, orderId: null, orderNumber: null });
+    setCancelModal({
+      open: false,
+      orderId: null,
+      orderNumber: null,
+      orderItems: [],
+      totalAmount: 0,
+      paymentMethod: '',
+      paymentStatus: '',
+      paymentId: '',
+      paidAmount: 0,
+      cancelReason: '',
+      customCancelReason: '',
+      sendSupportMessage: false,
+      supportMessage: '',
+      validationError: ''
+    });
   };
 
+  const isCodOrder = (cancelModal.paymentMethod || '').toLowerCase() === 'cash on delivery';
+  const isRazorpayOrder = (cancelModal.paymentMethod || '').toLowerCase() === 'razorpay';
+
+  const isCancelReasonValid = Boolean(
+    cancelModal.cancelReason &&
+    (cancelModal.cancelReason !== 'Other reason' || cancelModal.customCancelReason.trim())
+  );
+
   const handleCancelOrder = async () => {
+    const selectedReason = cancelModal.cancelReason?.trim();
+    const customReason = cancelModal.customCancelReason?.trim();
+    const hasValidReason = selectedReason && (selectedReason !== 'Other reason' || customReason);
+
+    if (!hasValidReason) {
+      setCancelModal((prev) => ({
+        ...prev,
+        validationError: 'Please select a cancellation reason before cancelling the order.'
+      }));
+      return;
+    }
+
     setCancelling(true);
     try {
-      await API.put(`/orders/${cancelModal.orderId}/cancel`);
+      await API.put(`/orders/${cancelModal.orderId}/cancel`, {
+        cancelReason: cancelModal.cancelReason,
+        customCancelReason: cancelModal.customCancelReason,
+        supportMessage: cancelModal.sendSupportMessage ? cancelModal.supportMessage?.trim() : ''
+      });
       success('Order cancelled successfully. Refund will be processed within 5-7 business days.');
       closeCancelModal();
       fetchOrders();
@@ -204,9 +287,9 @@ const Orders = () => {
           ) : (
             <div className="orders-list">
               {orders.map((order) => {
-                const canCancel = order.orderStatus === 'pending' && isWithinCancellationWindow(order.createdAt);
+                const isCancellableStatus = ['pending', 'confirmed'].includes((order.orderStatus || '').toLowerCase());
+                const canCancel = isCancellableStatus && isWithinCancellationWindow(order.createdAt);
                 const hoursRemaining = getHoursRemaining(order.createdAt);
-                const isPending = order.orderStatus === 'pending';
 
                 return (
                   <div key={order._id} className="order-card">
@@ -272,14 +355,14 @@ const Orders = () => {
 
                       {/* Cancellation Section */}
                       <div className="cancellation-section">
-                        {isPending && canCancel && (
+                        {canCancel && (
                           <>
                             <div className="cancel-time-remaining">
                               <span className="time-icon">⏰</span>
                               <span>{hoursRemaining > 0 ? `${hoursRemaining}h remaining to cancel` : 'Less than 1 hour to cancel'}</span>
                             </div>
                             <button
-                              onClick={() => openCancelModal(order._id, order.orderNumber)}
+                              onClick={() => openCancelModal(order)}
                               className="btn-cancel-order"
                             >
                               Cancel Order
@@ -287,7 +370,7 @@ const Orders = () => {
                           </>
                         )}
 
-                        {isPending && !canCancel && (
+                        {isCancellableStatus && !canCancel && (
                           <div className="cancellation-expired">
                             <p className="expired-message">
                               Online cancellation is no longer available for this order.
@@ -306,6 +389,20 @@ const Orders = () => {
                         {order.orderStatus === 'cancelled' && (
                           <div className="order-cancelled-info">
                             <span className="cancelled-badge">Order Cancelled</span>
+                            {order.cancelReason && (
+                              <p className="order-cancelled-reason">Reason: {order.cancelReason}</p>
+                            )}
+                            {order.cancelledAt && (
+                              <p className="order-cancelled-date">
+                                Cancelled on {new Date(order.cancelledAt).toLocaleDateString('en-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -330,7 +427,9 @@ const Orders = () => {
                 <span className="modal-warning-icon-symbol">⚠</span>
               </div>
               <div className="modal-header-text">
-                <h3 className="modal-header-title">Cancel Order</h3>
+                <h3 className="modal-header-title">
+                  <span>Cancel Order</span>
+                </h3>
                 <p className="modal-header-subtitle">Order ID: #{cancelModal.orderNumber}</p>
               </div>
               <button className="modal-close" onClick={closeCancelModal} aria-label="Close">×</button>
@@ -338,28 +437,146 @@ const Orders = () => {
 
             {/* Body */}
             <div className="modal-body">
-              <p className="modal-message">Are you sure you want to cancel this order?</p>
-              <p className="modal-order-id">Order #{cancelModal.orderNumber}</p>
+              <div className="modal-section modal-order-summary-card">
+                <h4 className="modal-section-title">Product</h4>
+                {cancelModal.orderItems.length > 0 && (
+                  <div className="modal-order-summary-content">
+                    <img
+                      src={cancelModal.orderItems[0].image}
+                      alt={cancelModal.orderItems[0].name}
+                      className="modal-order-image"
+                      onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/72x72?text=Product';
+                      }}
+                    />
+                    <div className="modal-order-meta">
+                      <p className="modal-order-product-name">
+                        {cancelModal.orderItems[0].name}
+                        {cancelModal.orderItems.length > 1 && ` +${cancelModal.orderItems.length - 1} more`}
+                      </p>
+                      <p className="modal-order-qty-price">
+                        Qty:{cancelModal.orderItems.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                        <span className="modal-order-qty-divider">|</span>
+                        ₹{Number(cancelModal.totalAmount || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="modal-order-payment-line">
+                        Payment: {isCodOrder ? 'COD' : isRazorpayOrder ? 'Razorpay' : (cancelModal.paymentMethod || 'Online')}
+                        <span className="modal-order-qty-divider">•</span>
+                        {(cancelModal.paymentStatus || (isCodOrder ? 'pending' : 'paid')).toUpperCase()}
+                      </p>
+                      {cancelModal.paymentId && (
+                        <p className="modal-order-transaction-id">Txn ID: {cancelModal.paymentId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              <div className="cancellation-terms">
-                <ul className="cancellation-terms-list">
-                  <li>
-                    <span className="terms-check-icon">✔</span>
-                    Once cancelled, this action cannot be undone
-                  </li>
-                  <li>
-                    <span className="terms-check-icon">✔</span>
-                    Refund will be processed within 5–7 business days
-                  </li>
-                  <li>
-                    <span className="terms-check-icon">✔</span>
-                    Refund will go to the original payment method
-                  </li>
-                  <li>
-                    <span className="terms-check-icon">✔</span>
-                    WhatsApp confirmation message will be sent to your registered phone number
-                  </li>
-                </ul>
+              <div className="modal-divider" />
+
+              <div className="modal-section cancel-reason-section">
+                <h4 className="modal-section-title">Cancel Reason</h4>
+                <div className="cancel-reason-radio-group">
+                  {cancellationReasonOptions.map((reason) => (
+                    <label
+                      key={reason}
+                      className={`cancel-reason-radio-label${cancelModal.cancelReason === reason ? ' cancel-reason-radio-label--selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="cancelReason"
+                        value={reason}
+                        checked={cancelModal.cancelReason === reason}
+                        onChange={(e) => {
+                          const nextReason = e.target.value;
+                          setCancelModal((prev) => ({
+                            ...prev,
+                            cancelReason: nextReason,
+                            customCancelReason: nextReason === 'Other reason' ? prev.customCancelReason : '',
+                            validationError: ''
+                          }));
+                        }}
+                      />
+                      <span>{reason}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {cancelModal.cancelReason === 'Other reason' && (
+                  <textarea
+                    className="cancel-reason-textarea"
+                    placeholder="Please tell us more"
+                    rows={3}
+                    value={cancelModal.customCancelReason}
+                    onChange={(e) => setCancelModal((prev) => ({
+                      ...prev,
+                      customCancelReason: e.target.value,
+                      validationError: ''
+                    }))}
+                  />
+                )}
+
+                {cancelModal.validationError && (
+                  <p className="cancel-reason-error">
+                    {cancelModal.validationError}
+                  </p>
+                )}
+              </div>
+
+              <div className="modal-divider" />
+
+              {isCodOrder ? (
+                <div className="modal-section cod-info-box">
+                  <p className="cod-info-text">
+                    This order was placed using Cash on Delivery. No refund will be issued.
+                  </p>
+                </div>
+              ) : (
+                <div className="modal-section cancellation-terms refund-info-box">
+                  <h4 className="refund-info-title">Refund Details</h4>
+                  <ul className="cancellation-terms-list">
+                    <li>
+                      <span className="terms-check-icon">•</span>
+                      Refund will be sent to original payment method
+                    </li>
+                    <li>
+                      <span className="terms-check-icon">•</span>
+                      Refund processing time: 5-7 business days
+                    </li>
+                    <li>
+                      <span className="terms-check-icon">•</span>
+                      Refund status will be updated in your orders page
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              <div className="modal-divider" />
+
+              <div className="modal-section optional-message-box">
+                <h4 className="modal-section-title">Optional Message to Support / Admin</h4>
+                <label className="optional-message-toggle">
+                  <input
+                    type="checkbox"
+                    checked={cancelModal.sendSupportMessage}
+                    onChange={(e) => setCancelModal((prev) => ({
+                      ...prev,
+                      sendSupportMessage: e.target.checked,
+                      supportMessage: e.target.checked ? prev.supportMessage : ''
+                    }))}
+                  />
+                  <span>Send a message regarding this cancellation</span>
+                </label>
+
+                {cancelModal.sendSupportMessage && (
+                  <textarea
+                    className="cancel-reason-textarea optional-message-textarea"
+                    placeholder="Write a message for the refund or cancellation request (optional)"
+                    rows={2}
+                    value={cancelModal.supportMessage}
+                    onChange={(e) => setCancelModal((prev) => ({ ...prev, supportMessage: e.target.value }))}
+                  />
+                )}
               </div>
             </div>
 
@@ -375,7 +592,7 @@ const Orders = () => {
               <button
                 className="btn-modal-danger"
                 onClick={handleCancelOrder}
-                disabled={cancelling}
+                disabled={cancelling || !isCancelReasonValid}
               >
                 {cancelling ? (
                   <>

@@ -128,6 +128,24 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'],
     default: 'pending'
   },
+  cancelled: {
+    type: Boolean,
+    default: false
+  },
+  cancelReason: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  cancelledAt: {
+    type: Date,
+    default: null
+  },
+  cancelledBy: {
+    type: String,
+    enum: ['User', 'Admin', 'System'],
+    default: null
+  },
   deliveredAt: Date,
   createdAt: {
     type: Date,
@@ -151,6 +169,7 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ paymentStatus: 1 });
+orderSchema.index({ cancelled: 1, cancelledAt: -1 });
 
 // Additional indexes for dashboard aggregations
 orderSchema.index({ orderStatus: 1, createdAt: -1 }); // For pending/shipped/delivered filters
