@@ -92,13 +92,9 @@ exports.getProducts = async (req, res) => {
         query.category = category;
       }
 
-      // Search filter
+      // Search filter - use text search for better performance
       if (search) {
-        query.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { brand: { $regex: search, $options: 'i' } }
-        ];
+        query.$text = { $search: search };
       }
 
       // Price filter
@@ -116,6 +112,9 @@ exports.getProducts = async (req, res) => {
         sortOption.price = -1;
       } else if (sort === 'name') {
         sortOption.name = 1;
+      } else if (search) {
+        // If searching text, sort by relevance score by default
+        sortOption.score = { $meta: 'textScore' };
       } else {
         sortOption.createdAt = -1; // Default: newest first
       }
@@ -123,11 +122,19 @@ exports.getProducts = async (req, res) => {
       // Pagination
       const skip = (page - 1) * limit;
 
-      // Execute query
-      const products = await Product.find(query)
+      // Execute query with .lean() for performance
+      let queryChain = Product.find(query);
+      
+      // Add score projection if using text search
+      if (search) {
+        queryChain = queryChain.select({ score: { $meta: 'textScore' } });
+      }
+
+      const products = await queryChain
         .sort(sortOption)
         .limit(Number(limit))
-        .skip(skip);
+        .skip(skip)
+        .lean(); // Return plain objects for better performance
 
       // Get total count for pagination
       const total = await Product.countDocuments(query);

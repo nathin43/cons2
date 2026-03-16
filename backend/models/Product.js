@@ -90,4 +90,23 @@ productSchema.pre('save', function(next) {
   next();
 });
 
+// Add indexes for query performance
+// Index for category filtering (very common)
+productSchema.index({ category: 1 });
+
+// Index for status filtering
+productSchema.index({ status: 1 });
+
+// Index for featured products
+productSchema.index({ featured: 1, createdAt: -1 });
+
+// Compound index for category + status filters (common combination)
+productSchema.index({ category: 1, status: 1 });
+
+// Text index for search on name, description, and brand
+productSchema.index({ name: 'text', description: 'text', brand: 'text' });
+
+// Index for sorting by creation date
+productSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Product', productSchema);

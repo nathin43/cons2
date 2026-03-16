@@ -152,4 +152,9 @@ orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ paymentStatus: 1 });
 
+// Additional indexes for dashboard aggregations
+orderSchema.index({ orderStatus: 1, createdAt: -1 }); // For pending/shipped/delivered filters
+orderSchema.index({ paymentStatus: 1, createdAt: -1 }); // For payment status + time filters
+orderSchema.index({ $or: [{ orderStatus: 1 }, { paymentStatus: 1 }], createdAt: -1 }); // Compound for dashboard sales query
+
 module.exports = mongoose.model('Order', orderSchema);

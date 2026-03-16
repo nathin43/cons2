@@ -26,8 +26,10 @@ const AdminLayout = ({ children }) => {
   // Initialize notification socket connection
   useNotificationSocket();
 
-  // Fetch unread messages count
+  // Fetch unread messages count (only when admin is present)
   useEffect(() => {
+    if (!admin) return; // Guard: don't fetch if not authenticated
+    
     fetchUnreadCount();
     fetchPendingReturns();
     // Refresh every 2 minutes
@@ -36,7 +38,7 @@ const AdminLayout = ({ children }) => {
       fetchPendingReturns();
     }, 120000);
     return () => clearInterval(interval);
-  }, []);
+  }, [admin]);
 
   const fetchUnreadCount = async () => {
     try {

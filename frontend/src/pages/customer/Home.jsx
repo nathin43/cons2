@@ -10,6 +10,37 @@ import './Home.css';
  * Home Page Component
  * Landing page with featured products and categories
  */
+
+// Simple in-memory cache for products
+const CACHE_KEY = 'products_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const getProductsFromCache = () => {
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.log('Cache read error:', e);
+  }
+  return null;
+};
+
+const setProductsInCache = (products) => {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+      data: products,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.log('Cache write error:', e);
+  }
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
@@ -56,15 +87,43 @@ const Home = () => {
     };
   }, [autoPlayEnabled, products.length]);
 
-  const fetchProducts = async () => {
-    try {
-      const { data } = await API.get('/products');
-      setProducts(data.products || []);
-      setCurrentProductIndex(0); // Reset to first product
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
+  const fetchProducts = async (retries = 2) => {
+    // Try to get from cache first
+    const cachedProducts = getProductsFromCache();
+    if (cachedProducts) {
+      console.log('Loading products from cache');
+      setProducts(cachedProducts);
+      setCurrentProductIndex(0);
       setLoading(false);
+      return;
+    }
+
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const { data } = await API.get('/products');
+        const productList = data.products || [];
+        setProducts(productList);
+        setProductsInCache(productList); // Cache the results
+        setCurrentProductIndex(0); // Reset to first product
+        setLoading(false);
+        return; // Success, exit
+      } catch (error) {
+        console.error(`Error fetching products (attempt ${attempt + 1}/${retries + 1}):`, error.message);
+        
+        // If this was the last retry or not a timeout error, give up
+        if (attempt === retries || !error.code?.includes('ECONNABORTED')) {
+          console.error('Failed to fetch products:', error);
+          setLoading(false);
+          return;
+        }
+        
+        // Wait before retrying with exponential backoff
+        const waitTime = Math.min(1000 * Math.pow(2, attempt), 5000);
+        console.log(`Retrying in ${waitTime}ms...`);
+        await delay(waitTime);
+      }
     }
   };
 

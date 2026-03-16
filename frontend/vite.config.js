@@ -25,10 +25,11 @@ export default defineConfig({
     // ⚠️  IMPORTANT: This frontend (port 3003) proxies API requests to the backend
     // ⚠️  The backend MUST be running on port 50004 before starting the frontend
     // Backend is configured in: backend/.env (PORT=50004)
+    // Use 127.0.0.1 (not localhost) to avoid IPv6 localhost resolution issues on Windows.
     // If you change the backend port, update the 'target' values below accordingly
     proxy: {
       '/api': {
-        target: 'http://localhost:50004',
+        target: 'http://127.0.0.1:50004',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
@@ -46,7 +47,7 @@ export default defineConfig({
         },
       },
       '/uploads': {
-        target: 'http://localhost:50004',
+        target: 'http://127.0.0.1:50004',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {

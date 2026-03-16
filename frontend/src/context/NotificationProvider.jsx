@@ -1,14 +1,19 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useContext } from 'react';
 import API from '../services/api';
 import { NotificationContext } from './NotificationContext';
+import { AuthContext } from './AuthContext';
 
 export const NotificationProvider = ({ children }) => {
+  const { admin } = useContext(AuthContext); // Check if admin is authenticated
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({ status: 'all', type: 'all' });
 
   const fetchNotifications = useCallback(async (limit = 50, skip = 0) => {
+    // Guard: only fetch if admin is authenticated
+    if (!admin) return;
+    
     try {
       setLoading(true);
       const response = await API.get(`/admin/notifications`, { params: { limit, skip } });
@@ -21,9 +26,12 @@ export const NotificationProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [admin]);
 
   const fetchUnreadNotifications = useCallback(async (limit = 50) => {
+    // Guard: only fetch if admin is authenticated
+    if (!admin) return;
+    
     try {
       const response = await API.get(`/admin/notifications/unread`, { params: { limit } });
       if (response.data.success) {
@@ -33,9 +41,12 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching unread notifications:', error);
     }
-  }, []);
+  }, [admin]);
 
   const fetchUnreadCount = useCallback(async () => {
+    // Guard: only fetch if admin is authenticated
+    if (!admin) return;
+    
     try {
       const response = await API.get(`/admin/notifications/count`);
       if (response.data.success) {
@@ -44,9 +55,11 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching unread count:', error);
     }
-  }, []);
+  }, [admin]);
 
   const markAsRead = useCallback(async (notificationId) => {
+    if (!admin) return; // Guard
+    
     try {
       const response = await API.put(`/admin/notifications/${notificationId}/read`);
       if (response.data.success) {
@@ -60,9 +73,11 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
-  }, []);
+  }, [admin]);
 
   const markAllAsRead = useCallback(async () => {
+    if (!admin) return; // Guard
+    
     try {
       const response = await API.put(`/admin/notifications/mark-all-read`);
       if (response.data.success) {
@@ -72,9 +87,11 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
-  }, []);
+  }, [admin]);
 
   const deleteNotification = useCallback(async (notificationId) => {
+    if (!admin) return; // Guard
+    
     try {
       const response = await API.delete(`/admin/notifications/${notificationId}`);
       if (response.data.success) {
@@ -84,9 +101,11 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
-  }, []);
+  }, [admin]);
 
   const clearAllNotifications = useCallback(async () => {
+    if (!admin) return; // Guard
+    
     try {
       const response = await API.delete(`/admin/notifications`);
       if (response.data.success) {
@@ -96,7 +115,7 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Error clearing notifications:', error);
     }
-  }, []);
+  }, [admin]);
 
   const addNotification = useCallback((notification) => {
     setNotifications((prev) => [notification, ...prev]);

@@ -19,9 +19,22 @@ exports.getDashboard = async (req, res) => {
     const prevWeekStart = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() - 7);
 
     // ========== SALES METRICS ==========
-    // Total sales: delivered (COD) + paid online (Razorpay) orders
-    const deliveredOrders = await Order.find({ $or: [{ orderStatus: 'delivered' }, { paymentStatus: 'paid' }] });
-    const totalSales = deliveredOrders.reduce((sum, order) => sum + (order.totalAmount || order.totalPrice || 0), 0);
+    // Total sales: delivered (COD) + paid online (Razorpay) orders - optimized with aggregation
+    const totalSalesResult = await Order.aggregate([
+      {
+        $match: {
+          $or: [{ orderStatus: 'delivered' }, { paymentStatus: 'paid' }]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+    
+    const totalSales = totalSalesResult[0]?.total || 0;
     
     // Current week sales
     const currentWeekSales = await Order.aggregate([
@@ -77,66 +90,92 @@ exports.getDashboard = async (req, res) => {
     });
 
     // ========== SALES TREND DATA (Last 7 days) ==========
-    // Get all delivered orders and group by day
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-
+    // Build array with local dates FIRST, then query those days to avoid timezone mismatch
     const salesTrendData = [];
+    const trendMap = {};
+    
+    // Build the past 7 days using local dates
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-
-      // Use createdAt so every completed order is attributed to the day it was placed.
-      // This is consistent, reliable (all orders have createdAt) and avoids the
-      // updatedAt-on-status-change misattribution.
-      const dailySales = await Order.aggregate([
-        {
-          $match: {
-            $or: [{ orderStatus: 'delivered' }, { paymentStatus: 'paid' }],
-            createdAt: { $gte: startOfDay, $lt: endOfDay }
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            revenue: { $sum: '$totalAmount' },
-            orders: { $sum: 1 }
-          }
-        }
-      ]);
-
-      // Use en-CA locale for a reliable YYYY-MM-DD local-date string
+      
+      // Create local date boundaries WITHOUT timezone conversion
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+      const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+      const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+      
+      trendMap[dateStr] = { 
+        revenue: 0, 
+        orders: 0,
+        startOfDay,
+        endOfDay 
+      };
+      
       salesTrendData.push({
-        date: startOfDay.toLocaleDateString('en-CA'),
-        day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],
-        revenue: dailySales[0]?.revenue || 0,
-        orders: dailySales[0]?.orders || 0
+        date: dateStr,
+        day: dayName,
+        revenue: 0,
+        orders: 0
       });
     }
+    
+    // Query sales for all 7 days efficiently with .lean() for performance
+    const sevenDaysAgo = Object.values(trendMap)[0].startOfDay; // First day's start
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    const trendResults = await Order.find({
+      $or: [{ orderStatus: 'delivered' }, { paymentStatus: 'paid' }],
+      createdAt: { $gte: sevenDaysAgo, $lte: today }
+    }).select('createdAt totalAmount').lean();
+    
+    // Group results by date using local time (client-side grouping ensures correct timezone handling)
+    trendResults.forEach(order => {
+      const orderDate = new Date(order.createdAt);
+      const dateStr = orderDate.toLocaleDateString('en-CA');
+      
+      if (trendMap[dateStr]) {
+        trendMap[dateStr].revenue += order.totalAmount || 0;
+        trendMap[dateStr].orders += 1;
+      }
+    });
+    
+    // Update salesTrendData with actual values
+    salesTrendData.forEach(item => {
+      const data = trendMap[item.date];
+      item.revenue = data.revenue;
+      item.orders = data.orders;
+    });
 
     // ========== RECENT ORDERS ==========
     const recentOrders = await Order.find()
       .populate('user', 'name email')
       .populate('items.product', 'name image')
-      .sort('-createdAt')
-      .limit(5);
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
 
     // ========== AVERAGE RATING ==========
-    const products = await Product.find();
-    const avgRating = products.length > 0
-      ? (products.reduce((sum, p) => sum + (p.ratings?.average || 0), 0) / products.length).toFixed(1)
-      : 0;
+    const avgRatingResult = await Product.aggregate([
+      {
+        $group: {
+          _id: null,
+          avgRating: { $avg: '$ratings.average' }
+        }
+      }
+    ]);
+    
+    const avgRating = avgRatingResult[0]?.avgRating ? parseFloat(avgRatingResult[0].avgRating).toFixed(1) : 0;
 
     console.log('📊 Dashboard Stats Summary:');
-    console.log(`  💰 Total Sales: ₹${totalSales} (from ${deliveredOrders.length} delivered orders)`);
+    console.log(`  💰 Total Sales: ₹${totalSales}`);
     console.log(`  📦 Orders: ${totalOrders} total, ${todayOrders} today, ${pendingOrders} active`);
     console.log(`  📦 Status: ${pendingOrders} pending, ${shippedOrders} shipped, ${deliveredOrdersCount} delivered`);
     console.log(`  📦 Products: ${totalProducts} total, ${activeProducts} active, ${outOfStock} out of stock`);
     console.log(`  👥 Users: ${totalUsers} total, ${newUsersToday} new today`);
     console.log(`  📈 Sales Growth: ${salesGrowth}%`);
+    console.log(`  ⭐ Average Rating: ${avgRating}`);
     console.log(`  📊 Sales Trend Data Points: ${salesTrendData.length}`);
     salesTrendData.forEach((d, i) => {
       console.log(`    Day ${i}: ${d.day} (${d.date}) - ₹${d.revenue} from ${d.orders} orders`);
@@ -145,42 +184,47 @@ exports.getDashboard = async (req, res) => {
     res.status(200).json({
       success: true,
       stats: {
-        // Sales
-        totalSales,
-        salesGrowth: parseFloat(salesGrowth),
-        currentWeekSales: currentSales,
+        // Sales - ensure all are numbers
+        totalSales: Number(totalSales) || 0,
+        salesGrowth: Number(salesGrowth) || 0,
+        currentWeekSales: Number(currentSales) || 0,
         
-        // Orders
-        totalOrders,
-        todayOrders,
-        pendingOrders,
-        shippedOrders,
-        deliveredOrders: deliveredOrdersCount,
-        cancelledOrders,
+        // Orders - ensure all are numbers
+        totalOrders: Number(totalOrders) || 0,
+        todayOrders: Number(todayOrders) || 0,
+        pendingOrders: Number(pendingOrders) || 0,
+        shippedOrders: Number(shippedOrders) || 0,
+        deliveredOrders: Number(deliveredOrdersCount) || 0,
+        cancelledOrders: Number(cancelledOrders) || 0,
         
-        // Products
-        totalProducts,
-        activeProducts,
-        inactiveProducts,
-        outOfStock,
-        lowStockItems,
-        lowStockCount: lowStockItems,
+        // Products - ensure all are numbers
+        totalProducts: Number(totalProducts) || 0,
+        activeProducts: Number(activeProducts) || 0,
+        inactiveProducts: Number(inactiveProducts) || 0,
+        outOfStock: Number(outOfStock) || 0,
+        lowStockItems: Number(lowStockItems) || 0,
+        lowStockCount: Number(lowStockItems) || 0,
         
-        // Users
-        totalUsers,
-        newUsersToday,
+        // Users - ensure all are numbers
+        totalUsers: Number(totalUsers) || 0,
+        newUsersToday: Number(newUsersToday) || 0,
         
-        // Other
-        avgRating: parseFloat(avgRating)
+        // Other - ensure all are numbers
+        avgRating: Number(avgRating) || 0
       },
-      salesTrendData,
+      salesTrendData: salesTrendData.map(item => ({
+        date: item.date,
+        day: item.day,
+        revenue: Number(item.revenue) || 0,
+        orders: Number(item.orders) || 0
+      })),
       orderDistribution: {
-        delivered: deliveredOrdersCount,   // delivered + paid
-        shipped: shippedOrders,
-        pending: pendingOrders,             // pending + confirmed + processing only
-        cancelled: cancelledOrders          // cancelled + refunded
+        delivered: Number(deliveredOrdersCount) || 0,
+        shipped: Number(shippedOrders) || 0,
+        pending: Number(pendingOrders) || 0,
+        cancelled: Number(cancelledOrders) || 0
       },
-      recentOrders,
+      recentOrders: recentOrders || [],
       lastUpdated: new Date().toISOString()
     });
   } catch (error) {

@@ -150,101 +150,182 @@ const Navbar = () => {
                 {dropdownOpen && (
                   <motion.div
                     className="user-dropdown"
-                    initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                    initial={{ opacity: 0, y: -12, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.97 }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ 
+                      duration: 0.28, 
+                      ease: [0.34, 1.56, 0.64, 1]
+                    }}
                   >
-                  <div className="dropdown-caret" />
-                  {/* Non-Authenticated User Welcome Card */}
-                  {!isAuthenticated && (
-                    <div className="dropdown-welcome-card">
-                      <div className="modal-header-icon">
-                        <User size={26} color="#ffffff" strokeWidth={2} />
-                      </div>
-                      <h3 className="welcome-title">Welcome to Mani Electrical</h3>
-                      <p className="welcome-subtitle">Sign in to manage your account and orders</p>
-                      <div className="welcome-buttons">
-                        <Link to="/login" className="welcome-btn primary" onClick={() => setDropdownOpen(false)}>
-                          <User size={18} strokeWidth={2} />
-                          Sign In
-                        </Link>
-                        <Link to="/register" className="welcome-btn secondary" onClick={() => setDropdownOpen(false)}>
-                          <UserPlus size={18} strokeWidth={2} />
-                          Create Account
-                        </Link>
-                      </div>
-                      <div className="dropdown-divider"></div>
-                      <Link
-                        to="/admin/login"
-                        className="welcome-btn admin"
-                        onClick={() => setDropdownOpen(false)}
+                    <div className="dropdown-caret" />
+                    {/* Non-Authenticated User Welcome Card */}
+                    {!isAuthenticated && (
+                      <motion.div 
+                        className="dropdown-welcome-card"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.1, duration: 0.25 }}
                       >
-                        <Shield size={18} strokeWidth={2} />
-                        Admin Dashboard
-                      </Link>
-                    </div>
-                  )}
+                        <motion.div 
+                          className="modal-header-icon"
+                          initial={{ scale: 0.6, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.15, duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+                        >
+                          <User size={26} color="#ffffff" strokeWidth={2} />
+                        </motion.div>
+                        <motion.h3 
+                          className="welcome-title"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2, duration: 0.25 }}
+                        >
+                          Welcome to Mani Electrical
+                        </motion.h3>
+                        <motion.p 
+                          className="welcome-subtitle"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.25, duration: 0.25 }}
+                        >
+                          Sign in to manage your account and orders
+                        </motion.p>
+                        <motion.div 
+                          className="welcome-buttons"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.3, duration: 0.25 }}
+                        >
+                          <Link to="/login" className="welcome-btn primary" onClick={() => setDropdownOpen(false)}>
+                            <User size={18} strokeWidth={2} />
+                            Sign In
+                          </Link>
+                          <Link to="/register" className="welcome-btn secondary" onClick={() => setDropdownOpen(false)}>
+                            <UserPlus size={18} strokeWidth={2} />
+                            Create Account
+                          </Link>
+                        </motion.div>
+                        <div className="dropdown-divider"></div>
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.35, duration: 0.25 }}
+                        >
+                          <Link
+                            to="/admin/login"
+                            className="welcome-btn admin"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            <Shield size={18} strokeWidth={2} />
+                            Admin Dashboard
+                          </Link>
+                        </motion.div>
+                      </motion.div>
+                    )}
 
-                  {/* Authenticated User Info */}
-                  {isAuthenticated && (
-                    <div className="dropdown-user-info">
-                      <div className="user-avatar-large">
-                        {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                      </div>
-                      <div className="user-details">
-                        <h4 className="user-name-display">{user?.name || 'User'}</h4>
-                        <p className="user-email-display">{user?.email || ''}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="dropdown-divider"></div>
-
-                  {/* Menu Options */}
-                  {isAuthenticated && (
-                    <div className="dropdown-menu-section">
-                      <Link to="/profile" className="dropdown-menu-item" onClick={() => setDropdownOpen(false)}>
-                        <span className="menu-icon-wrap"><User size={16} strokeWidth={2} /></span>
-                        <span className="menu-text">My Profile</span>
-                        <ChevronRight size={14} className="menu-chevron" />
-                      </Link>
-                      <Link to="/orders" className="dropdown-menu-item" onClick={() => setDropdownOpen(false)}>
-                        <span className="menu-icon-wrap"><Package size={16} strokeWidth={2} /></span>
-                        <span className="menu-text">My Orders</span>
-                        <ChevronRight size={14} className="menu-chevron" />
-                      </Link>
-                    </div>
-                  )}
-
-                  {/* Sign Out */}
-                  {isAuthenticated && (
-                    <>
-                      <div className="dropdown-divider"></div>
-                      <div className="dropdown-menu-section dropdown-signout-section">
-                        <button onClick={handleLogout} className="dropdown-menu-item logout-item">
-                          <span className="menu-icon-wrap"><LogOut size={16} strokeWidth={2} /></span>
-                          <span className="menu-text">Sign Out</span>
-                          <ChevronRight size={14} className="menu-chevron" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Admin Dashboard - shown for admin users */}
-                  {isAuthenticated && isAdmin && (
-                    <>
-                      <div className="dropdown-divider"></div>
-                      <Link
-                        to="/admin"
-                        className="welcome-btn admin"
-                        onClick={() => setDropdownOpen(false)}
+                    {/* Authenticated User Info */}
+                    {isAuthenticated && (
+                      <motion.div 
+                        className="dropdown-user-info"
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1, duration: 0.25 }}
                       >
-                        <Shield size={18} strokeWidth={2} />
-                        Admin Dashboard
-                      </Link>
-                    </>
-                  )}
+                        <motion.div 
+                          className="user-avatar-large"
+                          whileHover={{ 
+                            scale: 1.08,
+                            boxShadow: "0 8px 28px rgba(99, 102, 241, 0.45)"
+                          }}
+                          transition={{ duration: 0.25 }}
+                        >
+                          {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                        </motion.div>
+                        <div className="user-details">
+                          <h4 className="user-name-display">{user?.name || 'User'}</h4>
+                          <p className="user-email-display">{user?.email || ''}</p>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className="dropdown-divider"></div>
+
+                    {/* Menu Options - Staggered Animation */}
+                    {isAuthenticated && (
+                      <motion.div 
+                        className="dropdown-menu-section"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.15, duration: 0.2 }}
+                      >
+                        <motion.div
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.18, duration: 0.25, ease: "easeOut" }}
+                          whileHover={{ x: 4 }}
+                        >
+                          <Link to="/profile" className="dropdown-menu-item" onClick={() => setDropdownOpen(false)}>
+                            <span className="menu-icon-wrap"><User size={16} strokeWidth={2} /></span>
+                            <span className="menu-text">My Profile</span>
+                            <ChevronRight size={14} className="menu-chevron" />
+                          </Link>
+                        </motion.div>
+                        <motion.div
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.24, duration: 0.25, ease: "easeOut" }}
+                          whileHover={{ x: 4 }}
+                        >
+                          <Link to="/orders" className="dropdown-menu-item" onClick={() => setDropdownOpen(false)}>
+                            <span className="menu-icon-wrap"><Package size={16} strokeWidth={2} /></span>
+                            <span className="menu-text">My Orders</span>
+                            <ChevronRight size={14} className="menu-chevron" />
+                          </Link>
+                        </motion.div>
+                      </motion.div>
+                    )}
+
+                    {/* Sign Out - Staggered Animation */}
+                    {isAuthenticated && (
+                      <>
+                        <div className="dropdown-divider"></div>
+                        <motion.div 
+                          className="dropdown-menu-section dropdown-signout-section"
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.30, duration: 0.25, ease: "easeOut" }}
+                          whileHover={{ x: 4 }}
+                        >
+                          <button onClick={handleLogout} className="dropdown-menu-item logout-item">
+                            <span className="menu-icon-wrap"><LogOut size={16} strokeWidth={2} /></span>
+                            <span className="menu-text">Sign Out</span>
+                            <ChevronRight size={14} className="menu-chevron" />
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+
+                    {/* Admin Dashboard - shown for admin users */}
+                    {isAuthenticated && isAdmin && (
+                      <>
+                        <div className="dropdown-divider"></div>
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.36, duration: 0.25 }}
+                        >
+                          <Link
+                            to="/admin"
+                            className="welcome-btn admin"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            <Shield size={18} strokeWidth={2} />
+                            Admin Dashboard
+                          </Link>
+                        </motion.div>
+                      </>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

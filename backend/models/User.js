@@ -174,4 +174,9 @@ userSchema.methods.getActualStatus = function() {
   };
 };
 
+// Add indexes for dashboard queries
+userSchema.index({ createdAt: -1 });
+userSchema.index({ status: 1 });
+userSchema.index({ createdAt: -1, status: 1 });
+
 module.exports = mongoose.model('User', userSchema);

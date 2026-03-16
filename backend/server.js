@@ -8,6 +8,56 @@ const { Server } = require('socket.io');
 // Load environment variables (force reload)
 dotenv.config();
 
+// ============================================
+// GLOBAL ERROR HANDLERS - PREVENT CRASHES
+// ============================================
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.error(`[${timestamp}] [CRITICAL] Uncaught Exception:`, error.message);
+  console.error(error.stack);
+  // Exit process after logging
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.error(`[${timestamp}] [CRITICAL] Unhandled Rejection at:`, promise);
+  console.error('[CRITICAL] Reason:', reason);
+  // Don't exit - continue running but log the issue
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.log(`[${timestamp}] [SERVER] SIGTERM signal received: closing HTTP server`);
+  if (global.httpServer) {
+    global.httpServer.close(() => {
+      console.log(`[${timestamp}] [SERVER] HTTP server closed`);
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+});
+
+// Handle interrupt signal
+process.on('SIGINT', () => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.log(`[${timestamp}] [SERVER] SIGINT signal received: closing HTTP server`);
+  if (global.httpServer) {
+    global.httpServer.close(() => {
+      console.log(`[${timestamp}] [SERVER] HTTP server closed`);
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+});
+
+
 // Initialize Express app
 const app = express();
 
@@ -82,18 +132,37 @@ const ReportMessage = require('./models/ReportMessage');
 
 io.on('connection', (socket) => {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log(`[${timestamp}] 🔌 Socket connected: ${socket.id}`);
+  console.log(`[${timestamp}] Socket connected: ${socket.id}`);
+
+  // Handle socket errors
+  socket.on('error', (error) => {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.error(`[${timestamp}] Socket error on ${socket.id}:`, error.message);
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', (reason) => {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`[${timestamp}] Socket disconnected: ${socket.id} - Reason: ${reason}`);
+  });
 
   // User joins their personal room to receive messages
   socket.on('joinUserRoom', (userId) => {
-    if (userId) {
-      socket.join(userId);
-      console.log(`[${timestamp}] 👤 User ${userId} joined their room`);
+    try {
+      if (userId) {
+        socket.join(userId);
+        const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+        console.log(`[${timestamp}] User ${userId} joined room`);
+      }
+    } catch (error) {
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      console.error(`[${timestamp}] Error in joinUserRoom:`, error.message);
     }
   });
 
   // Admin sends a report message to a specific user
   socket.on('sendReportMessage', async (data) => {
+    let timestamp = new Date().toISOString().split('T')[1].split('.')[0];
     try {
       const { userId, orderId, paymentId, invoiceId, title, message, status, sentBy } = data;
 
@@ -139,18 +208,20 @@ io.on('connection', (socket) => {
       });
 
     } catch (error) {
-      console.error(`[${timestamp}] ❌ Error sending report message:`, error.message);
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      console.error(`[${timestamp}] Error sending report message:`, error.message);
       socket.emit('reportMessageError', {
         success: false,
         message: error.message || 'Failed to send report message'
       });
     }
   });
+});
 
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log(`[${timestamp}] 🔌 Socket disconnected: ${socket.id}`);
-  });
+// Global Socket.IO error handler
+io.engine.on('connection_error', (error) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.error(`[${timestamp}] Socket.IO connection error:`, error.message);
 });
 
 // Initialize notification handlers
@@ -188,19 +259,45 @@ app.use('/api/invoices', require('./routes/invoiceRoutes'));
 // Root route
 app.get('/', (req, res) => {
   res.json({
-    message: '🔌 Electric Shop API',
+    message: 'Electric Shop API',
     version: '1.0.0',
     status: 'Running'
   });
 });
 
-// Error handling middleware
+// 404 handler (before error middleware)
+app.use((req, res) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.warn(`[${timestamp}] 404 Not Found: ${req.method} ${req.path}`);
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// Enhanced error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.statusCode || 500).json({
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  
+  // Log the error with timestamp
+  console.error(`[${timestamp}] [ERROR] ${err.message}`);
+  if (process.env.NODE_ENV === 'development') {
+    console.error(err.stack);
+  }
+  
+  // Prevent headers already sent error
+  if (res.headersSent) {
+    return next(err);
+  }
+  
+  // Determine status code
+  const statusCode = err.statusCode || err.status || 500;
+  
+  // Send error response
+  res.status(statusCode).json({
     success: false,
     message: err.message || 'Server Error',
-    error: process.env.NODE_ENV === 'development' ? err : {}
+    error: process.env.NODE_ENV === 'development' ? err.toString() : undefined
   });
 });
 
@@ -298,19 +395,31 @@ connectWithRetry();
 // Start Server
 const PORT = process.env.PORT || 5000;
 
+// Store server in global scope for graceful shutdown
+global.httpServer = httpServer;
+
 httpServer.on('error', (err) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
   if (err.code === 'EADDRINUSE') {
-    console.error(`\n❌ Port ${PORT} is already in use.`);
-    console.error(`   Run this to fix it:  npx kill-port ${PORT}`);
-    console.error(`   Or in PowerShell:    Stop-Process -Id (netstat -ano | Select-String ":${PORT}\\s").ToString().Trim().Split()[-1] -Force\n`);
+    console.error(`[${timestamp}] [ERROR] Port ${PORT} is already in use.`);
+    console.error(`[ERROR] Run this to fix it:  npx kill-port ${PORT}`);
+    console.error(`[ERROR] Or in PowerShell:    Stop-Process -Id (netstat -ano | Select-String ":${PORT}\\s").ToString().Trim().Split()[-1] -Force`);
     process.exit(1);
   } else {
+    console.error(`[${timestamp}] [ERROR] Server error:`, err.message);
     throw err;
   }
 });
 
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+try {
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`[${timestamp}] [SERVER] Running on port ${PORT}`);
+    console.log(`[${timestamp}] [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+} catch (error) {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.error(`[${timestamp}] [CRITICAL] Failed to start server:`, error.message);
+  process.exit(1);
+}
 
