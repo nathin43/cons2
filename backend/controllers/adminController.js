@@ -154,7 +154,7 @@ exports.getDashboard = async (req, res) => {
       .populate('items.product', 'name image')
       .sort({ createdAt: -1 })
       .limit(5)
-      .lean();
+      .exec();
 
     // ========== AVERAGE RATING ==========
     const avgRatingResult = await Product.aggregate([
@@ -471,6 +471,42 @@ exports.getCustomer = async (req, res) => {
       totalSpent
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get user phone by email (for return request reply)
+ * @route GET /api/admin/user/:email
+ * @access Private/Admin
+ */
+exports.getUserByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const user = await User.findOne({ email: email.toLowerCase() }).select('_id name email phone');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user by email:', error);
     res.status(500).json({
       success: false,
       message: error.message

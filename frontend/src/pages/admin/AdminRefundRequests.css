@@ -648,6 +648,24 @@
   color: #1e293b;
 }
 
+.rr-reply-info-input {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1e293b;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.rr-reply-info-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .rr-reply-original {
   margin-bottom: 18px;
 }

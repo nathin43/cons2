@@ -34,6 +34,7 @@ const AdminRefundRequests = () => {
   const [adminNotes, setAdminNotes] = useState('');
   const [replyModal, setReplyModal] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [replyPhone, setReplyPhone] = useState('');
   const [replyStatus, setReplyStatus] = useState('approved');
   const [replySending, setReplySending] = useState(false);
   const { loading, run } = useAdminLoader();
@@ -145,15 +146,29 @@ const AdminRefundRequests = () => {
     setAdminNotes('');
   };
 
-  const openReplyModal = (req) => {
+  const openReplyModal = async (req) => {
     setReplyModal(req);
     setReplyText('');
     setReplyStatus(req.status === 'new' || req.status === 'in-progress' ? 'approved' : req.status);
+    
+    // Fetch user profile to get their current phone number from their account
+    try {
+      const { data } = await API.get(`/admin/user/${req.email}`);
+      if (data.success && data.user?.phone) {
+        setReplyPhone(data.user.phone);
+      } else {
+        setReplyPhone(req.phone || '');
+      }
+    } catch (err) {
+      console.error('Failed to fetch user phone from profile:', err);
+      setReplyPhone(req.phone || '');
+    }
   };
 
   const closeReplyModal = () => {
     setReplyModal(null);
     setReplyText('');
+    setReplyPhone('');
   };
 
   const handleSendReply = async () => {
@@ -184,8 +199,8 @@ const AdminRefundRequests = () => {
           `Message from Support:\n${replyText}\n\n` +
           `Thank you,\nMani Electricals Support Team`;
 
-        // Prefer the verified phone returned by the server (from User record)
-        const rawPhone = (data.userPhone || replyModal.phone || '').replace(/\D/g, '');
+        // Prefer the verified phone returned by the server (from User record), fallback to edited replyPhone
+        const rawPhone = (data.userPhone || replyPhone || replyModal.phone || '').replace(/\D/g, '');
         if (rawPhone) {
           window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(waText)}`, '_blank');
         }
@@ -375,7 +390,13 @@ const AdminRefundRequests = () => {
                   </div>
                   <div className="rr-reply-info-item">
                     <span className="rr-reply-info-label">📞 Phone</span>
-                    <span className="rr-reply-info-value">{replyModal.phone}</span>
+                    <input
+                      type="text"
+                      className="rr-reply-info-input"
+                      value={replyPhone}
+                      onChange={e => setReplyPhone(e.target.value)}
+                      placeholder="Enter phone number"
+                    />
                   </div>
                   <div className="rr-reply-info-item">
                     <span className="rr-reply-info-label">📦 Category</span>

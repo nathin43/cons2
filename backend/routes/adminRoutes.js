@@ -5,6 +5,7 @@ const {
   getRevenueTrend,
   getCustomers,
   getCustomer,
+  getUserByEmail,
   deleteCustomer,
   getTopBuyers,
   checkDataConsistency,
@@ -25,6 +26,7 @@ router.get('/dashboard', getDashboard);
 router.get('/revenue-trend', getRevenueTrend);
 router.get('/customers', getCustomers);
 router.get('/customers/top-buyers', getTopBuyers);
+router.get('/user/:email', getUserByEmail); // Get user by email for return request reply
 router.get('/customers/:id', getCustomer);
 router.delete('/customers/:id', deleteCustomer);
 

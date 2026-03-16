@@ -30,37 +30,39 @@ const AdminLayout = ({ children }) => {
   useEffect(() => {
     if (!admin) return; // Guard: don't fetch if not authenticated
     
+    const fetchUnreadCount = async () => {
+      try {
+        const { data } = await API.get('/contact/unread-count');
+        if (data.success) {
+          setUnreadMessages(data.count);
+        }
+      } catch (error) {
+        console.error('Failed to fetch unread messages count:', error);
+      }
+    };
+
+    const fetchPendingReturns = async () => {
+      try {
+        const { data } = await API.get('/returns/pending-count');
+        if (data.success) {
+          setPendingReturns(data.count);
+        }
+      } catch (error) {
+        // Non-critical: silently ignore
+      }
+    };
+    
     fetchUnreadCount();
     fetchPendingReturns();
+    
     // Refresh every 2 minutes
     const interval = setInterval(() => {
       fetchUnreadCount();
       fetchPendingReturns();
     }, 120000);
+    
     return () => clearInterval(interval);
   }, [admin]);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const { data } = await API.get('/contact/unread-count');
-      if (data.success) {
-        setUnreadMessages(data.count);
-      }
-    } catch (error) {
-      console.error('Failed to fetch unread messages count:', error);
-    }
-  };
-
-  const fetchPendingReturns = async () => {
-    try {
-      const { data } = await API.get('/returns/pending-count');
-      if (data.success) {
-        setPendingReturns(data.count);
-      }
-    } catch (error) {
-      // Non-critical: silently ignore
-    }
-  };
 
   const handleLogout = () => {
     adminLogout(() => {
