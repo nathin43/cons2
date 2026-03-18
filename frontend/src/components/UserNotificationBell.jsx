@@ -133,6 +133,8 @@ function timeAgo(dateStr) {
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
+const hasCustomerToken = () => !!localStorage.getItem('token');
+
 export default function UserNotificationBell() {
   const { isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -154,7 +156,7 @@ export default function UserNotificationBell() {
 
   // ── Fetch full list (used when dropdown opens) ────────────────────────────
   const fetchNotifications = useCallback(async (pageNum = 1, append = false) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasCustomerToken()) return;
     try {
       if (pageNum === 1) setLoading(true);
       else setLoadingMore(true);
@@ -178,18 +180,21 @@ export default function UserNotificationBell() {
 
   // ── Poll unread count only (lightweight) ─────────────────────────────────
   const pollUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasCustomerToken()) return;
     try {
       const data = await userNotificationApi.getUnreadCount();
       if (data.success) setUnreadCount(data.unreadCount);
-    } catch {
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        setUnreadCount(0);
+      }
       // silent
     }
   }, [isAuthenticated]);
 
   // Start polling on mount
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasCustomerToken()) return;
     pollUnreadCount();
     pollRef.current = setInterval(pollUnreadCount, POLL_INTERVAL);
     return () => clearInterval(pollRef.current);

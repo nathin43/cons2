@@ -23,7 +23,8 @@ export const CartProvider = ({ children }) => {
 
   // Initialize cart from localStorage or API
   const initializeCart = async () => {
-    if (isAuthenticated) {
+    const hasCustomerToken = !!localStorage.getItem('token');
+    if (isAuthenticated && hasCustomerToken) {
       await fetchCart();
     } else {
       loadLocalCart();
@@ -58,6 +59,12 @@ export const CartProvider = ({ children }) => {
   // Fetch cart from API - MongoDB Persistent Cart
   const fetchCart = async () => {
     try {
+      const hasCustomerToken = !!localStorage.getItem('token');
+      if (!hasCustomerToken) {
+        loadLocalCart();
+        return;
+      }
+
       setLoading(true);
       const { data } = await API.get('/cart');
       if (data.cart) {
@@ -77,7 +84,8 @@ export const CartProvider = ({ children }) => {
   // Add item to cart - MongoDB Persistent Cart
   const addToCart = async (productId, quantity = 1, product = null) => {
     try {
-      if (!isAuthenticated) {
+      const hasCustomerToken = !!localStorage.getItem('token');
+      if (!isAuthenticated || !hasCustomerToken) {
         return { success: false, message: 'Please log in to add items to cart' };
       }
 

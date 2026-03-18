@@ -32,7 +32,8 @@ const ProductReviews = ({ productId, product }) => {
 
   // Check review eligibility only when auth state changes
   useEffect(() => {
-    if (isAuthenticated && productId) {
+    const hasCustomerToken = !!localStorage.getItem('token');
+    if (isAuthenticated && hasCustomerToken && productId) {
       checkIfUserCanReview();
     }
   }, [productId, isAuthenticated]);
@@ -62,7 +63,12 @@ const ProductReviews = ({ productId, product }) => {
         });
       }
     } catch (error) {
-      console.error('Error checking review status:', error);
+      if (error?.response?.status !== 401) {
+        console.error('Error checking review status:', error);
+      }
+      // On auth failures, keep review UI in safe default state without spamming logs.
+      setCanReview(true);
+      setEditingReviewId(null);
     }
   };
 

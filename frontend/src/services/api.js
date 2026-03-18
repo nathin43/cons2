@@ -43,6 +43,7 @@ API.interceptors.request.use((config) => {
   else if (
     config.url.includes('/razorpay')             ||
     config.url.includes('/cart')                 ||
+    config.url.includes('/reviews')              ||  // customer: product reviews/review checks
     config.url.includes('/orders/myorders')      ||  // customer: view own orders
     (config.url === '/orders' && config.method.toLowerCase() === 'post') || // customer: place order
     (config.url.includes('/orders/') && config.url.includes('/cancel')) || // customer: cancel own order
@@ -71,6 +72,7 @@ API.interceptors.request.use((config) => {
   const isCustomerOnlyRoute =
     config.url.includes('/razorpay')           ||
     config.url.includes('/cart')               ||
+    config.url.includes('/reviews')            ||
     config.url.includes('/orders/myorders')    ||
     (config.url === '/orders' && config.method.toLowerCase() === 'post') ||
     (config.url.includes('/orders/') && config.url.includes('/cancel')) ||

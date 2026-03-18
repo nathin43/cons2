@@ -279,7 +279,12 @@
 
 .product-description,
 .product-specifications {
-  margin-bottom: 32px;\n  padding: 24px;\n  background: linear-gradient(135deg, #fafbfc 0%, #f8f9fc 100%);\n  border-radius: 16px;\n  border: 1px solid #e5e7eb;\n}
+  margin-bottom: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, #fafbfc 0%, #f8f9fc 100%);
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+}
 
 .product-specifications table {
   width: 100%;

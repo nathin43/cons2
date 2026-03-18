@@ -123,6 +123,67 @@
   letter-spacing: 0.02em;
 }
 
+/* Payment summary card below Order/Payment IDs */
+.oc-payment-summary-card {
+  margin-top: 18px;
+  text-align: left;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.oc-payment-summary-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.oc-payment-summary-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.oc-payment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.oc-payment-label {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.oc-payment-value {
+  font-size: 13.5px;
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+.oc-payment-value.is-paid {
+  color: #15803d;
+}
+
+.oc-payment-value.is-pending {
+  color: #b45309;
+}
+
 /* ─── Body Grid ─────────────────────────────────────────────────── */
 .oc-grid {
   display: grid;
@@ -350,4 +411,6 @@
   .oc-card         { padding: 20px; }
   .oc-ids-row      { gap: 10px; }
   .oc-id-chip      { min-width: 130px; padding: 10px 16px; }
+  .oc-payment-row  { flex-direction: column; align-items: flex-start; }
+  .oc-payment-value { text-align: left; }
 }

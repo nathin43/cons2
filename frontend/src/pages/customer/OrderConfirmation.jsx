@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import API from '../../services/api';
 import './OrderConfirmation.css';
 
 /**
@@ -13,19 +14,71 @@ const OrderConfirmation = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { order, items, totalAmount, paymentId } = location.state || {};
+  const navState = location.state || {};
+  const [order, setOrder] = useState(navState.order || null);
+  const [items, setItems] = useState(navState.items || navState.order?.items || []);
+  const [totalAmount, setTotalAmount] = useState(
+    navState.totalAmount || navState.paidAmount || navState.order?.totalAmount || 0
+  );
+  const [loading, setLoading] = useState(false);
 
-  // Guard: if accessed directly (no state), send to orders
+  const orderIdFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('orderId');
+  }, [location.search]);
+
+  const orderId = orderIdFromQuery || navState.orderId || navState.order?._id || null;
+
   useEffect(() => {
-    if (!order) {
-      navigate('/orders', { replace: true });
-    }
-  }, []);
+    let isMounted = true;
+
+    const fetchOrder = async () => {
+      if (!orderId) {
+        if (!order) {
+          navigate('/orders', { replace: true });
+        }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { data } = await API.get(`/orders/${orderId}`);
+
+        if (!isMounted) return;
+
+        if (data?.success && data.order) {
+          setOrder(data.order);
+          setItems(data.order.items || navState.items || []);
+          setTotalAmount(data.order.totalAmount || navState.totalAmount || navState.paidAmount || 0);
+        }
+      } catch {
+        if (isMounted && !order) {
+          navigate('/orders', { replace: true });
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchOrder();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [orderId, navigate]);
 
   if (!order) return null;
 
   const orderNumber = order.orderNumber || order._id?.slice(-8).toUpperCase();
   const itemCount   = items?.length || 0;
+  const paymentMethodRaw = String(order.paymentMethod || navState.paymentMethod || '').toUpperCase();
+  const isRazorpay = paymentMethodRaw === 'RAZORPAY';
+  const paymentMethodLabel = isRazorpay ? 'Razorpay' : 'Cash on Delivery';
+  const paymentStatusLabel = isRazorpay ? 'Paid' : 'Pending';
+  const paidAmount = Number(totalAmount || navState.paidAmount || 0);
+  const razorpayPaymentId =
+    order.razorpayPaymentId || navState.razorpayPaymentId || navState.paymentId || null;
+  const razorpayOrderId = order.razorpayOrderId || navState.razorpayOrderId || null;
 
   return (
     <>
@@ -48,18 +101,47 @@ const OrderConfirmation = () => {
               Thank you for shopping with Mani Electricals.
               Your order has been placed and is being processed.
             </p>
+            {loading && <p className="oc-main-sub">Refreshing payment details...</p>}
 
             <div className="oc-ids-row">
               <div className="oc-id-chip">
                 <span className="oc-id-label">Order #</span>
                 <span className="oc-id-value">{orderNumber}</span>
               </div>
-              {paymentId && (
+              {razorpayPaymentId && (
                 <div className="oc-id-chip oc-id-chip--green">
                   <span className="oc-id-label">Payment ID</span>
-                  <span className="oc-id-value">{paymentId.slice(-14)}</span>
+                  <span className="oc-id-value">{razorpayPaymentId}</span>
                 </div>
               )}
+            </div>
+
+            <div className="oc-payment-summary-card">
+              <h3 className="oc-payment-summary-title">Payment Summary</h3>
+              <div className="oc-payment-summary-grid">
+                <div className="oc-payment-row">
+                  <span className="oc-payment-label">💳 Method</span>
+                  <span className="oc-payment-value">{paymentMethodLabel}</span>
+                </div>
+                <div className="oc-payment-row">
+                  <span className="oc-payment-label">✔ Status</span>
+                  <span className={`oc-payment-value ${isRazorpay ? 'is-paid' : 'is-pending'}`}>{paymentStatusLabel}</span>
+                </div>
+                <div className="oc-payment-row">
+                  <span className="oc-payment-label">💰 Amount</span>
+                  <span className="oc-payment-value">₹{paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="oc-payment-row">
+                  <span className="oc-payment-label">🔢 Transaction ID</span>
+                  <span className="oc-payment-value">{razorpayPaymentId || 'N/A (COD)'}</span>
+                </div>
+                {isRazorpay && razorpayOrderId && (
+                  <div className="oc-payment-row">
+                    <span className="oc-payment-label">🧾 Razorpay Order ID</span>
+                    <span className="oc-payment-value">{razorpayOrderId}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
