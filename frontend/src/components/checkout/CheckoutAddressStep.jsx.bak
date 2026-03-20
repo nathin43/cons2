@@ -1,0 +1,414 @@
+import { useRef } from 'react';
+import {
+  CheckCircle2,
+  Home,
+  Loader2,
+  LocateFixed,
+  MapPin,
+  Plus,
+  Building2
+} from 'lucide-react';
+
+const ADDRESS_TYPES = [
+  { value: 'Home', label: 'Home', icon: Home },
+  { value: 'Work', label: 'Work', icon: Building2 },
+  { value: 'Other', label: 'Other', icon: MapPin }
+];
+
+const inputBaseClass =
+  'peer h-11 w-full rounded-xl border border-slate-300 bg-white px-3 pt-4 text-sm text-slate-900 transition duration-200 placeholder:text-transparent hover:border-slate-400 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-100';
+
+const labelBaseClass =
+  'pointer-events-none absolute left-3 top-3 text-sm text-slate-500 transition-all duration-200 peer-placeholder-shown:top-3 peer-placeholder-shown:text-sm peer-focus:-top-2 peer-focus:text-xs peer-focus:font-semibold peer-focus:text-blue-700 peer-not-placeholder-shown:-top-2 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:font-semibold peer-not-placeholder-shown:text-blue-700 bg-white px-1';
+
+const FormInput = ({
+  id,
+  name,
+  label,
+  value,
+  onChange,
+  type = 'text',
+  inputMode,
+  maxLength,
+  error,
+  autoComplete,
+  onKeyDown,
+  inputRef,
+  autoFocus = false,
+  readOnly = false,
+  placeholder = ' '
+}) => (
+  <div className="space-y-1">
+    <div className="relative">
+      <input
+        ref={inputRef}
+        id={id}
+        type={type}
+        name={name}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        readOnly={readOnly}
+        autoFocus={autoFocus}
+        autoComplete={autoComplete}
+        className={`${inputBaseClass} ${error ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''} ${readOnly ? 'bg-slate-50' : ''}`}
+      />
+      <label htmlFor={id} className={labelBaseClass}>
+        {label}
+      </label>
+    </div>
+    {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+  </div>
+);
+
+const SavedAddressCard = ({ address, selected, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`relative w-full rounded-xl border p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
+      selected
+        ? 'border-blue-600 bg-blue-50 shadow-sm ring-2 ring-blue-100'
+        : 'border-slate-200 bg-white hover:border-blue-300'
+    }`}
+  >
+    <div className="mb-1 flex items-center justify-between">
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+        {address.type === 'Home' ? '🏠' : address.type === 'Work' ? '🏢' : '📍'} {address.type}
+      </span>
+      {selected && <CheckCircle2 className="h-4 w-4 text-blue-600" aria-hidden="true" />}
+    </div>
+    <p className="text-sm font-semibold text-slate-900">{address.name}</p>
+    <p className="text-xs text-slate-600">{address.phone}</p>
+    <p className="mt-1 text-xs text-slate-600">{address.summary}</p>
+  </button>
+);
+
+const CheckoutAddressStep = ({
+  formData,
+  fieldErrors,
+  onChange,
+  onContinue,
+  loading,
+  paymentProcessing,
+  pincodeLookupLoading,
+  pincodeHint,
+  deliveryEstimate,
+  savedAddresses,
+  selectedSavedAddressId,
+  onSelectSavedAddress,
+  onAddNewAddress,
+  onUseCurrentLocation,
+  locationPreview,
+  locationLoading
+}) => {
+  const disabled = loading || paymentProcessing;
+  const inputRefs = useRef({
+    name: null,
+    phone: null,
+    pincode: null,
+    city: null,
+    houseNo: null,
+    area: null,
+    state: null
+  });
+
+  const setInputRef = (key) => (node) => {
+    inputRefs.current[key] = node;
+  };
+
+  const focusField = (key) => {
+    const field = inputRefs.current[key];
+    if (field) field.focus();
+  };
+
+  const moveOnEnter = (nextField) => (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      focusField(nextField);
+    }
+  };
+
+  const handlePhoneChange = (e) => {
+    onChange(e);
+    const digits = String(e.target.value || '').replace(/\D/g, '').slice(0, 10);
+    if (digits.length === 10) focusField('pincode');
+  };
+
+  const handlePincodeChange = (e) => {
+    onChange(e);
+    const digits = String(e.target.value || '').replace(/\D/g, '').slice(0, 6);
+    if (digits.length === 6) focusField('houseNo');
+  };
+
+  const setAddressType = (value) => {
+    onChange({
+      target: { name: 'addressType', value, type: 'text' }
+    });
+  };
+
+  const setDefaultAddress = (checked) => {
+    onChange({
+      target: { name: 'makeDefaultAddress', checked, type: 'checkbox' }
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-blue-800">Step 1 of 4</p>
+            <h3 className="text-lg font-semibold text-slate-900">Address</h3>
+          </div>
+          <p className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+            Secure checkout
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium text-slate-900">Saved Addresses</p>
+          <button
+            type="button"
+            onClick={onAddNewAddress}
+            className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add New Address
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {savedAddresses.map((address) => (
+            <SavedAddressCard
+              key={address.id}
+              address={address}
+              selected={selectedSavedAddressId === address.id}
+              onClick={() => onSelectSavedAddress(address.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-medium tracking-wide text-slate-800">Contact Details</h4>
+          <button
+            type="button"
+            onClick={onUseCurrentLocation}
+            disabled={locationLoading}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {locationLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+            Use Current Location
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <FormInput
+            id="checkout-name"
+            name="name"
+            label="Full Name *"
+            value={formData.name}
+            onChange={onChange}
+            inputRef={setInputRef('name')}
+            onKeyDown={moveOnEnter('phone')}
+            autoFocus
+            autoComplete="name"
+            error={fieldErrors.name}
+          />
+
+          <FormInput
+            id="checkout-phone"
+            name="phone"
+            label="Phone Number *"
+            value={formData.phone}
+            onChange={handlePhoneChange}
+            inputRef={setInputRef('phone')}
+            onKeyDown={moveOnEnter('pincode')}
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
+            autoComplete="tel"
+            error={fieldErrors.phone}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+        <h4 className="mb-3 text-sm font-medium tracking-wide text-slate-800">Address Details</h4>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <div className="relative">
+              <input
+                ref={setInputRef('pincode')}
+                id="checkout-pincode"
+                type="text"
+                name="pincode"
+                placeholder=" "
+                value={formData.pincode}
+                onChange={handlePincodeChange}
+                onKeyDown={moveOnEnter('city')}
+                inputMode="numeric"
+                maxLength={6}
+                autoComplete="postal-code"
+                className={`${inputBaseClass} ${fieldErrors.pincode ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''}`}
+              />
+              <label htmlFor="checkout-pincode" className={labelBaseClass}>
+                Pincode *
+              </label>
+              {pincodeLookupLoading && (
+                <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-blue-600" aria-hidden="true" />
+              )}
+            </div>
+            <p className="text-xs text-slate-600">{pincodeHint}</p>
+            {fieldErrors.pincode && <p className="text-xs font-semibold text-red-600">{fieldErrors.pincode}</p>}
+          </div>
+
+          <FormInput
+            id="checkout-city"
+            name="city"
+            label="City *"
+            value={formData.city}
+            onChange={onChange}
+            inputRef={setInputRef('city')}
+            onKeyDown={moveOnEnter('houseNo')}
+            autoComplete="address-level2"
+            error={fieldErrors.city}
+          />
+
+          <FormInput
+            id="checkout-house"
+            name="houseNo"
+            label="House / Building *"
+            value={formData.houseNo}
+            onChange={onChange}
+            inputRef={setInputRef('houseNo')}
+            onKeyDown={moveOnEnter('area')}
+            autoComplete="address-line1"
+            error={fieldErrors.houseNo}
+          />
+
+          <div className="space-y-1">
+            <div className="relative">
+              <input
+                ref={setInputRef('area')}
+                id="checkout-area"
+                type="text"
+                name="area"
+                list="checkout-area-suggestions"
+                placeholder=" "
+                value={formData.area}
+                onChange={onChange}
+                onKeyDown={moveOnEnter('state')}
+                autoComplete="address-line2"
+                className={`${inputBaseClass} ${fieldErrors.area ? 'border-red-500 focus:border-red-600 focus:ring-red-100' : ''}`}
+              />
+              <label htmlFor="checkout-area" className={labelBaseClass}>
+                Area / Street / Landmark *
+              </label>
+              <datalist id="checkout-area-suggestions">
+                <option value="Near Bus Stand" />
+                <option value="Main Road" />
+                <option value="Market Street" />
+                <option value="Opposite School" />
+              </datalist>
+            </div>
+            {fieldErrors.area && <p className="text-xs font-semibold text-red-600">{fieldErrors.area}</p>}
+          </div>
+
+          <FormInput
+            id="checkout-state"
+            name="state"
+            label="State *"
+            value={formData.state}
+            onChange={onChange}
+            inputRef={setInputRef('state')}
+            autoComplete="address-level1"
+            error={fieldErrors.state}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="rounded-xl bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+          <h4 className="mb-3 text-sm font-medium tracking-wide text-slate-800">Address Type</h4>
+
+          <div className="mb-4 flex flex-wrap gap-2">
+            {ADDRESS_TYPES.map(({ value, label, icon: Icon }) => {
+              const selected = formData.addressType === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setAddressType(value)}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
+                    selected
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="makeDefaultAddress"
+              checked={formData.makeDefaultAddress}
+              onChange={(e) => setDefaultAddress(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            Set as default address
+          </label>
+        </div>
+
+        <div className="rounded-xl bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+          <h4 className="mb-3 text-sm font-medium tracking-wide text-slate-800">Location Details</h4>
+          <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+            <p className="text-xs font-medium text-blue-800">Delivery Estimate</p>
+            <p className="mt-0.5 text-xs text-blue-700">{deliveryEstimate}</p>
+          </div>
+
+          <details className="mt-3 rounded-lg border border-slate-200">
+            <summary className="cursor-pointer list-none px-3 py-2 text-xs text-slate-600">Map Preview</summary>
+            {locationPreview ? (
+              <iframe
+                title="Location preview"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${locationPreview.lng - 0.01}%2C${locationPreview.lat - 0.01}%2C${locationPreview.lng + 0.01}%2C${locationPreview.lat + 0.01}&layer=mapnik&marker=${locationPreview.lat}%2C${locationPreview.lng}`}
+                className="h-28 w-full"
+              />
+            ) : (
+              <div className="flex h-28 items-center justify-center bg-slate-50 text-xs font-medium text-slate-500">
+                Map preview will appear after using current location
+              </div>
+            )}
+          </details>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 z-20 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={disabled}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#1E40AF] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Continue to Payment →
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default CheckoutAddressStep;

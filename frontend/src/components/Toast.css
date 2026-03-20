@@ -22,10 +22,10 @@
   font-size: 14px;
   font-weight: 500;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  border: 1px solid #e2e8f0;
+  animation: slideInTop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   pointer-events: auto;
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
   line-height: 1.4;
 }
 
@@ -86,108 +86,116 @@
   transform: scale(0.95);
 }
 
-/* Success Toast - Green */
+/* Success Toast */
 .toast-success {
-  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  background: #dcfce7;
   color: #065f46;
-  border-color: #d1fae5;
+  border-color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
 }
 
 .toast-success .toast-icon {
-  color: #10b981;
+  color: #16a34a;
 }
 
 .toast-success .toast-close {
-  color: #059669;
+  color: #6b7280;
 }
 
 .toast-success .toast-close:hover {
-  background: rgba(16, 185, 129, 0.1);
+  background: #bbf7d0;
+  color: #374151;
 }
 
-/* Error Toast - Red */
+/* Error Toast */
 .toast-error {
-  background: linear-gradient(135deg, #fef2f2 0%, #fef5f5 100%);
-  color: #7f1d1d;
-  border-color: #fecaca;
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
 .toast-error .toast-icon {
-  color: #ef4444;
+  color: #38bdf8;
 }
 
 .toast-error .toast-close {
-  color: #dc2626;
+  color: #94a3b8;
 }
 
 .toast-error .toast-close:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
 }
 
-/* Info Toast - Blue */
+/* Info Toast */
 .toast-info {
-  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
-  color: #0c4a6e;
-  border-color: #bfdbfe;
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
 .toast-info .toast-icon {
-  color: #3b82f6;
+  color: #38bdf8;
 }
 
 .toast-info .toast-close {
-  color: #2563eb;
+  color: #94a3b8;
 }
 
 .toast-info .toast-close:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
 }
 
-/* Warning Toast - Orange */
+/* Warning Toast */
 .toast-warning {
-  background: linear-gradient(135deg, #fffbeb 0%, #fefce8 100%);
-  color: #92400e;
-  border-color: #fcd34d;
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
 .toast-warning .toast-icon {
-  color: #f59e0b;
+  color: #38bdf8;
 }
 
 .toast-warning .toast-close {
-  color: #d97706;
+  color: #94a3b8;
 }
 
 .toast-warning .toast-close:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
 }
 
 /* Animations */
-@keyframes slideInRight {
+@keyframes slideInTop {
   from {
     opacity: 0;
-    transform: translateX(400px);
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
-@keyframes slideOutRight {
+@keyframes slideOutTop {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
   to {
     opacity: 0;
-    transform: translateX(400px);
+    transform: translateY(-20px);
   }
 }
 
 /* Exit animation when toast is being removed */
 .toast.removing {
-  animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: slideOutTop 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Mobile Responsiveness */
@@ -217,30 +225,3 @@
   }
 }
 
-/* Dark mode support (optional) */
-@media (prefers-color-scheme: dark) {
-  .toast {
-    background: rgba(20, 20, 20, 0.95);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .toast-success {
-    background: linear-gradient(135deg, rgba(5, 150, 105, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
-    color: #d1fae5;
-  }
-
-  .toast-error {
-    background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
-    color: #fecaca;
-  }
-
-  .toast-info {
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
-    color: #bfdbfe;
-  }
-
-  .toast-warning {
-    background: linear-gradient(135deg, rgba(180, 83, 9, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
-    color: #fcd34d;
-  }
-}

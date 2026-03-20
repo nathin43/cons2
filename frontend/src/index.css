@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ===============================================
    GLOBAL STYLES - PURE BLACK TEXT
    Maximum Readability & Visibility

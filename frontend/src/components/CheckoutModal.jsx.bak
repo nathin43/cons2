@@ -21,8 +21,6 @@ const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
-const CONFIRMATION_REDIRECT_SECONDS = 12;
-
 const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, shipping = 0, total = 0 }) => {
   const navigate = useNavigate();
   const { fetchCart } = useContext(CartContext);
@@ -90,7 +88,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
   });
   const [paymentRetryContext, setPaymentRetryContext] = useState(null);
   const [confirmationData, setConfirmationData] = useState(null);
-  const [redirectCountdown, setRedirectCountdown] = useState(CONFIRMATION_REDIRECT_SECONDS);
+  const [redirectCountdown, setRedirectCountdown] = useState(7);
   const [fieldErrors, setFieldErrors] = useState({});
   const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
   const [pincodeHint, setPincodeHint] = useState('Enter 6-digit pincode to auto-detect city and state.');
@@ -100,7 +98,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
   const [locationPreview, setLocationPreview] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const wasOpenRef = useRef(false);
-  const modalBodyRef = useRef(null);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -120,7 +117,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
         setPaymentResult({ status: 'idle', message: '', details: null });
         setPaymentRetryContext(null);
         setConfirmationData(null);
-        setRedirectCountdown(CONFIRMATION_REDIRECT_SECONDS);
+        setRedirectCountdown(7);
         setFieldErrors({});
         setPincodeLookupLoading(false);
         setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
@@ -135,10 +132,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
         const initialSavedAddresses = getSavedAddressesFromFormData(initialForm);
         setSavedAddresses(initialSavedAddresses);
         setSelectedSavedAddressId(initialSavedAddresses[0]?.id || 'new');
-
-        requestAnimationFrame(() => {
-          if (modalBodyRef.current) modalBodyRef.current.scrollTop = 0;
-        });
       }
     } else {
       document.body.classList.remove('modal-open');
@@ -156,7 +149,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
   useEffect(() => {
     if (checkoutStage !== 'FORM' || currentStep !== 4 || !confirmationData) return;
 
-    setRedirectCountdown(CONFIRMATION_REDIRECT_SECONDS);
+    setRedirectCountdown(7);
 
     const intervalId = setInterval(() => {
       setRedirectCountdown((prev) => (prev > 0 ? prev - 1 : 0));
@@ -164,7 +157,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
 
     const timeoutId = setTimeout(() => {
       closeConfirmationAndNavigate('/orders');
-    }, CONFIRMATION_REDIRECT_SECONDS * 1000);
+    }, 7000);
 
     return () => {
       clearInterval(intervalId);
@@ -320,8 +313,9 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     );
   };
 
+  if (!isOpen) return null;
+
   const handleBackdropClick = (e) => {
-    if (!isOpen) return;
     if (paymentProcessing || checkoutStage === 'PROCESSING') return;
     if (e.target.classList.contains('checkout-modal-overlay')) {
       onClose();
@@ -335,7 +329,8 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     if (!String(formData.name || '').trim()) nextErrors.name = 'Full Name is required';
     if (!/^\d{10}$/.test(String(formData.phone || ''))) nextErrors.phone = 'Phone number must be 10 digits';
     if (!/^\d{6}$/.test(String(formData.pincode || ''))) nextErrors.pincode = 'Pincode must be 6 digits';
-    if (!String(formData.houseNo || '').trim()) nextErrors.houseNo = 'Address is required';
+    if (!String(formData.houseNo || '').trim()) nextErrors.houseNo = 'House No / Building Name is required';
+    if (!String(formData.area || '').trim()) nextErrors.area = 'Area / Street / Landmark is required';
     if (!String(formData.city || '').trim()) nextErrors.city = 'City is required';
     if (!String(formData.state || '').trim()) nextErrors.state = 'State is required';
 
@@ -343,29 +338,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
 
     if (Object.keys(nextErrors).length > 0) {
       setError('Please correct the highlighted fields before proceeding.');
-
-      const fieldIdMap = {
-        name: 'checkout-name',
-        phone: 'checkout-phone',
-        pincode: 'checkout-pincode',
-        houseNo: 'checkout-house',
-        city: 'checkout-city',
-        state: 'checkout-state'
-      };
-
-      const firstInvalidKey = Object.keys(nextErrors)[0];
-      const firstInvalidId = fieldIdMap[firstInvalidKey];
-
-      if (firstInvalidId) {
-        requestAnimationFrame(() => {
-          const el = document.getElementById(firstInvalidId);
-          if (el) {
-            el.focus();
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        });
-      }
-
       return false;
     }
 
@@ -413,6 +385,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     await fetchCart();
     setConfirmationData(null);
     setCheckoutStage('FORM');
+    setCurrentStep(1);
     onClose();
     navigate(path, { replace: true });
   };
@@ -580,7 +553,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
       }
 
       // Final validation of all required fields
-      if (!formData.name || !formData.phone || !formData.houseNo || !formData.city || !formData.state || !formData.pincode) {
+      if (!formData.name || !formData.phone || !formData.houseNo || !formData.area || !formData.city || !formData.state || !formData.pincode) {
         setError('Please fill all required customer details');
         setLoading(false);
         return;
@@ -610,7 +583,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
       const shippingAddress = {
         name: formData.name,
         phone: formData.phone,
-        street: [formData.houseNo, formData.area].filter(Boolean).join(', '),
+        street: `${formData.houseNo}, ${formData.area}`,
         city: formData.city,
         state: formData.state,
         zipCode: formData.pincode,
@@ -675,11 +648,10 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
 
   return (
     <div
-      className={`checkout-modal-overlay ${paymentProcessing || checkoutStage === 'PROCESSING' ? 'checkout-modal-overlay--processing' : ''} ${!isOpen ? 'checkout-modal-overlay--hidden' : ''}`}
+      className={`checkout-modal-overlay ${paymentProcessing || checkoutStage === 'PROCESSING' ? 'checkout-modal-overlay--processing' : ''}`}
       onClick={handleBackdropClick}
-      aria-hidden={!isOpen}
     >
-      <div className={`checkout-modal ${paymentProcessing || checkoutStage === 'PROCESSING' ? 'checkout-modal--processing' : ''}`}>
+      <div className={`checkout-modal ${paymentProcessing || checkoutStage === 'PROCESSING' ? 'checkout-modal--processing' : ''} ${checkoutStage === 'FORM' && currentStep === 4 && confirmationData ? 'checkout-modal--fit-content' : ''}`}>
         <button
           className="checkout-modal-close"
           onClick={currentStep === 4 && confirmationData ? () => closeConfirmationAndNavigate('/products') : onClose}
@@ -722,19 +694,21 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
         </div>
         )}
 
-        {error && (
+        {error && !(checkoutStage === 'FORM' && currentStep === 1) && (
           <div className="checkout-modal-error">{error}</div>
         )}
 
-        <div ref={modalBodyRef} className="checkout-modal-body">
-          <form onSubmit={handleSubmit} className="checkout-form-shell">
+        <div className={`checkout-modal-body ${checkoutStage === 'FORM' && currentStep === 4 && confirmationData ? 'checkout-modal-body--success' : ''}`}>
+          <form onSubmit={handleSubmit}>
             
             {/* STEP 1: Customer Details */}
-            <div className={`checkout-section step-content checkout-section--address step-panel ${checkoutStage === 'FORM' && currentStep === 1 ? 'step-panel--active' : ''}`}>
+            {currentStep === 1 && (
+              <div className="checkout-section step-content checkout-section--address">
                 <CheckoutAddressStep
                   formData={formData}
                   fieldErrors={fieldErrors}
                   onChange={handleChange}
+                  onContinue={handleNext}
                   loading={loading}
                   paymentProcessing={paymentProcessing}
                   pincodeLookupLoading={pincodeLookupLoading}
@@ -749,9 +723,11 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                   locationLoading={locationLoading}
                 />
               </div>
+            )}
 
             {/* STEP 2: Payment Method */}
-            <div className={`checkout-section step-content step-panel ${checkoutStage === 'FORM' && currentStep === 2 ? 'step-panel--active' : ''}`}>
+            {currentStep === 2 && (
+              <div className="checkout-section step-content">
                 <h3>💳 Payment Method</h3>
 
                 <div className="checkout-payment-options">
@@ -790,9 +766,11 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                   </label>
                 </div>
               </div>
+            )}
 
             {/* STEP 3: Order Summary */}
-            <div className={`checkout-section step-content step-panel ${checkoutStage === 'FORM' && currentStep === 3 ? 'step-panel--active' : ''}`}>
+            {checkoutStage === 'FORM' && currentStep === 3 && (
+              <div className="checkout-section step-content">
                 <h3>📦 Order Summary</h3>
 
                 <div className="checkout-step3-grid">
@@ -857,19 +835,21 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                   </div>
                 </div>
               </div>
+            )}
 
             {/* PROCESSING STAGE */}
-            <div className={`checkout-section step-content checkout-processing-view step-panel ${checkoutStage === 'PROCESSING' ? 'step-panel--active' : ''}`}>
+            {checkoutStage === 'PROCESSING' && (
+              <div className="checkout-section step-content checkout-processing-view">
                 <div className="checkout-processing-spinner" aria-hidden="true"></div>
                 <h3>Processing Payment</h3>
                 <p className="checkout-processing-text">Opening secure payment...</p>
                 <p className="checkout-processing-subtext">Please wait and complete payment in Razorpay.</p>
               </div>
+            )}
 
             {/* STEP 4: Confirmation */}
-            <div className={`checkout-section step-content checkout-payment-result step-panel ${checkoutStage === 'FORM' && currentStep === 4 && confirmationData ? 'step-panel--active' : ''}`}>
-              {confirmationData && (
-              <>
+            {checkoutStage === 'FORM' && currentStep === 4 && confirmationData && (
+              <div className="checkout-section step-content checkout-payment-result">
                 <div className="checkout-success-check-wrap" aria-hidden="true">
                   <svg className="checkout-success-check-svg" viewBox="0 0 52 52">
                     <circle className="checkout-success-check-circle" cx="26" cy="26" r="25" />
@@ -907,10 +887,10 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
 
                 <p className="checkout-redirect-countdown">Redirecting in {redirectCountdown} seconds...</p>
 
-                <div className="checkout-success-actions">
+                <div className="checkout-confirmation-actions checkout-success-actions">
                   <button
                     type="button"
-                    className="checkout-btn checkout-btn-primary"
+                    className="checkout-btn checkout-btn-place"
                     onClick={() => closeConfirmationAndNavigate('/orders')}
                   >
                     View My Orders
@@ -923,12 +903,11 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                     Continue Shopping
                   </button>
                 </div>
-              </>
-              )}
               </div>
+            )}
 
             {/* Navigation Buttons */}
-            {checkoutStage === 'FORM' && currentStep < 4 && (
+            {checkoutStage === 'FORM' && currentStep > 1 && currentStep < 4 && (
             <div className={`checkout-actions ${currentStep === 1 ? 'checkout-actions--address' : ''}`}>
               {currentStep > 1 && currentStep < 4 && (
                 <button
@@ -941,7 +920,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                 </button>
               )}
               
-              {currentStep < 3 ? (
+              {currentStep === 2 ? (
                 <button
                   type="button"
                   className="checkout-btn checkout-btn-primary"
