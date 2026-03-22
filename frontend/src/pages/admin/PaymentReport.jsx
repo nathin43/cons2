@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -7,6 +7,24 @@ import useToast from '../../hooks/useToast';
 import api from '../../services/api';
 import './ReportStyles.css';
 import { addShopHeader, addPageNumbers, loadUnicodeFonts, pdfRupee } from '../../utils/pdfUtils';
+import {
+  REPORT_RANGE_OPTIONS,
+  getRangeTitle,
+  getRangeDates,
+  shiftRangeAnchor,
+  getRangePeriodLabel,
+  formatDateInput,
+  formatDateLabel,
+} from '../../utils/reportRange';
+import {
+  getTimelinePoints,
+  mapSeriesToTimeline,
+  bucketKeyForDate,
+  hasAnyNonZero,
+} from '../../utils/reportChartTimeline';
+import ModernReportChart from '../../components/admin/ModernReportChart';
+import useReportAutoRefresh from '../../hooks/useReportAutoRefresh';
+import { filterByDateRange } from '../../utils/reportDataSync';
 
 const PaymentReport = () => {
   const navigate = useNavigate();
@@ -14,12 +32,22 @@ const PaymentReport = () => {
   
   const { loading, run } = useAdminLoader();
   const [exporting, setExporting] = useState(false);
+  const [allPaymentData, setAllPaymentData] = useState([]);
   const [paymentData, setPaymentData] = useState([]);
+  const [selectedRange, setSelectedRange] = useState('monthly');
+  const [periodAnchor, setPeriodAnchor] = useState(new Date());
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [comparison, setComparison] = useState(null);
+  const [backendChart, setBackendChart] = useState(null);
+  const [paymentMethodBreakdown, setPaymentMethodBreakdown] = useState([]);
+  const [dateRangeLabel, setDateRangeLabel] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const initialRange = getRangeDates('monthly');
   const [filters, setFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: formatDateInput(initialRange.from),
+    dateTo: formatDateInput(initialRange.to),
     paymentMethod: '',
     minAmount: '',
     maxAmount: ''
@@ -35,9 +63,35 @@ const PaymentReport = () => {
   const isFetchingRef = useRef(false);
   const cacheRef = useRef(null);
   const cacheTimeRef = useRef(0);
+  const chartRef = useRef(null);
   const CACHE_DURATION = 30000; // 30 seconds
+  const paymentTimelineData = useMemo(() => {
+    if (backendChart?.labels?.length && backendChart?.data?.length) {
+      return backendChart.labels.map((label, index) => ({
+        label,
+        value: Number(backendChart.data[index] || 0),
+      }));
+    }
 
-  const fetchPaymentData = useCallback(async (forceRefresh = false) => {
+    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
+    return mapSeriesToTimeline(timeline, paymentData, {
+      getBucketKey: (item) => bucketKeyForDate(item.createdAt, selectedRange),
+      getValue: (item) => Number(item.totalAmount || 0),
+    });
+  }, [backendChart, paymentData, selectedRange, filters.dateFrom, filters.dateTo]);
+  const paymentMethodPieData = useMemo(() => {
+    if (!paymentMethodBreakdown || paymentMethodBreakdown.length === 0) {
+      return [
+        { name: 'COD', value: 0 },
+        { name: 'Online', value: 0 },
+      ];
+    }
+    return paymentMethodBreakdown;
+  }, [paymentMethodBreakdown]);
+  const showNoDataHint = !hasAnyNonZero(paymentTimelineData);
+
+  const fetchPaymentData = useCallback(async (forceRefresh = false, rangeOverride = selectedRange, filtersOverride = null) => {
+    const activeFilters = filtersOverride || filters;
     if (isFetchingRef.current && !forceRefresh) {
       console.log('💳 Payment fetch already in progress, skipping...');
       return;
@@ -45,8 +99,7 @@ const PaymentReport = () => {
 
     if (!forceRefresh && cacheRef.current && (Date.now() - cacheTimeRef.current < CACHE_DURATION)) {
       console.log('💳 Using cached payment data');
-      setPaymentData(cacheRef.current.data);
-      setAnalytics(cacheRef.current.analytics);
+      setAllPaymentData(cacheRef.current.data);
       return;
     }
     
@@ -61,11 +114,12 @@ const PaymentReport = () => {
       }
 
       const params = new URLSearchParams();
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.append('dateTo', filters.dateTo);
-      if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
-      if (filters.minAmount) params.append('minAmount', filters.minAmount);
-      if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
+      if (activeFilters.dateFrom) params.append('dateFrom', activeFilters.dateFrom);
+      if (activeFilters.dateTo) params.append('dateTo', activeFilters.dateTo);
+      if (activeFilters.paymentMethod) params.append('paymentMethod', activeFilters.paymentMethod);
+      if (activeFilters.minAmount) params.append('minAmount', activeFilters.minAmount);
+      if (activeFilters.maxAmount) params.append('maxAmount', activeFilters.maxAmount);
+      params.append('range', rangeOverride);
 
       const queryString = params.toString();
       const endpoint = queryString ? `/admin/reports/payments?${queryString}` : '/admin/reports/payments';
@@ -76,18 +130,18 @@ const PaymentReport = () => {
       if (response.data?.success) {
         const reportData = response.data.data || [];
         const summary = response.data.summary || {};
-        
-        const analyticsData = {
-          totalTransactions: summary.totalTransactions || 0,
-          totalAmount: summary.totalAmount || 0,
-          codPayments: summary.codPayments || 0,
-          onlinePayments: summary.onlinePayments || 0
-        };
+        const chart = response.data.chart || null;
 
-        setPaymentData(reportData);
-        setAnalytics(analyticsData);
+        setAllPaymentData(reportData);
+        setBackendChart(chart);
+        setComparison(summary.comparison || null);
+        if (summary.dateRange?.from && summary.dateRange?.to) {
+          setDateRangeLabel(`${formatDateLabel(summary.dateRange.from)} - ${formatDateLabel(summary.dateRange.to)}`);
+        } else {
+          setDateRangeLabel('');
+        }
 
-        cacheRef.current = { data: reportData, analytics: analyticsData };
+        cacheRef.current = { data: reportData };
         cacheTimeRef.current = Date.now();
         
         console.log(`✅ Payment report loaded: ${reportData.length} records`);
@@ -106,23 +160,124 @@ const PaymentReport = () => {
       
       const errorMsg = err.response?.data?.message || 'Failed to load payment report. Please try again.';
       setErrorMessage(errorMsg);
+      setBackendChart(null);
+      setComparison(null);
+      setPaymentMethodBreakdown([]);
       error(errorMsg);
     } finally {
       isFetchingRef.current = false;
     }
-  }, [filters, navigate, error]);
+  }, [filters, navigate, error, selectedRange]);
 
   useEffect(() => {
     let mounted = true;
     
     if (mounted) {
-      run(fetchPaymentData);
+      run(async () => {
+        await fetchPaymentData(true, selectedRange);
+      }).finally(() => {
+        if (mounted) setIsInitialLoading(false);
+      });
     }
 
     return () => {
       mounted = false;
     };
   }, []); // Only run once on mount
+
+  useEffect(() => {
+    const filtered = filterByDateRange(
+      allPaymentData,
+      selectedRange,
+      'createdAt',
+      filters.dateFrom,
+      filters.dateTo
+    );
+
+    setPaymentData(filtered);
+
+    const totals = filtered.reduce(
+      (acc, item) => {
+        const amount = Number(item.totalAmount || 0);
+        const method = String(item.paymentMethod || '').toLowerCase();
+        acc.totalTransactions += 1;
+        acc.totalAmount += amount;
+        if (method === 'cod') {
+          acc.codPayments += 1;
+        } else {
+          acc.onlinePayments += 1;
+        }
+        acc.breakdown[method || 'unknown'] = (acc.breakdown[method || 'unknown'] || 0) + 1;
+        return acc;
+      },
+      {
+        totalTransactions: 0,
+        totalAmount: 0,
+        codPayments: 0,
+        onlinePayments: 0,
+        breakdown: {},
+      }
+    );
+
+    setAnalytics({
+      totalTransactions: totals.totalTransactions,
+      totalAmount: totals.totalAmount,
+      codPayments: totals.codPayments,
+      onlinePayments: totals.onlinePayments,
+    });
+
+    const methodBreakdown = Object.entries(totals.breakdown).map(([name, value]) => ({
+      name: name.toUpperCase(),
+      value,
+    }));
+    setPaymentMethodBreakdown(methodBreakdown);
+  }, [allPaymentData, selectedRange, filters.dateFrom, filters.dateTo]);
+
+  useReportAutoRefresh(
+    () => fetchPaymentData(true, selectedRange, filters),
+    { intervalMs: 10000 }
+  );
+
+  const handleRangeChange = async (range) => {
+    if (range === selectedRange) return;
+    const nextAnchor = new Date();
+    const next = getRangeDates(range, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+    setPeriodAnchor(nextAnchor);
+    setSelectedRange(range);
+    setFilters(nextFilters);
+    cacheRef.current = null;
+    setIsUpdating(true);
+    try {
+      await fetchPaymentData(true, range, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleShiftPeriod = async (direction) => {
+    const nextAnchor = shiftRangeAnchor(selectedRange, periodAnchor, direction);
+    const next = getRangeDates(selectedRange, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+
+    setPeriodAnchor(nextAnchor);
+    setFilters(nextFilters);
+    cacheRef.current = null;
+    setIsUpdating(true);
+    try {
+      await fetchPaymentData(true, selectedRange, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Removed old fetchPaymentData - now using optimized version above
 
@@ -131,15 +286,21 @@ const PaymentReport = () => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = async () => {
     cacheRef.current = null;
-    run(() => fetchPaymentData(true));
+    setIsUpdating(true);
+    try {
+      await fetchPaymentData(true, selectedRange);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleClearFilters = () => {
+    const currentRange = getRangeDates(selectedRange);
     setFilters({
-      dateFrom: '',
-      dateTo: '',
+      dateFrom: formatDateInput(currentRange.from),
+      dateTo: formatDateInput(currentRange.to),
       paymentMethod: '',
       minAmount: '',
       maxAmount: ''
@@ -151,6 +312,7 @@ const PaymentReport = () => {
     try {
       const { jsPDF } = await import('jspdf');
       const autoTable = (await import('jspdf-autotable')).default;
+      const html2canvas = (await import('html2canvas')).default;
       
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -159,6 +321,19 @@ const PaymentReport = () => {
       const PDF_FONT = await loadUnicodeFonts(doc);
 
       let yPos = addShopHeader(doc, 'PAYMENT REPORT', [245, 158, 11]);
+
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`${getRangeTitle(selectedRange)} Payment Report`, 14, yPos);
+      yPos += 5;
+      if (dateRangeLabel) {
+        doc.setFont(PDF_FONT, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Range: ${dateRangeLabel}`, 14, yPos);
+        yPos += 5;
+      }
 
       // Reset text style for content
       doc.setFont(PDF_FONT, 'normal');
@@ -205,6 +380,31 @@ const PaymentReport = () => {
       });
       
       yPos = doc.lastAutoTable.finalY + 10;
+
+      if (chartRef.current) {
+        const canvas = await html2canvas(chartRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const chartWidth = pageWidth - 28;
+        const chartHeight = Math.min((canvas.height * chartWidth) / canvas.width, 80);
+
+        if (yPos + chartHeight + 14 > doc.internal.pageSize.getHeight()) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFont(PDF_FONT, 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(245, 158, 11);
+        doc.text('Payment Charts', 14, yPos);
+        yPos += 6;
+
+        doc.addImage(imgData, 'PNG', 14, yPos, chartWidth, chartHeight);
+        yPos += chartHeight + 8;
+      }
       
       // Detailed Payment Data
       doc.setFont(PDF_FONT, 'bold');
@@ -236,7 +436,7 @@ const PaymentReport = () => {
       
       // Save PDF
       addPageNumbers(doc, [245, 158, 11]);
-      const fileName = `payment-report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `payments-report-${selectedRange}.pdf`;
       doc.save(fileName);
       
       success('Payment report exported as PDF successfully');
@@ -256,7 +456,7 @@ const PaymentReport = () => {
     });
   };
 
-  if (loading) {
+  if (loading && isInitialLoading) {
     return (
       <AdminLayout>
         <DashboardSkeleton title="Loading Payment Report" />
@@ -266,7 +466,7 @@ const PaymentReport = () => {
 
   return (
     <AdminLayout>
-      <div className="admin-report-page">
+      <div className={`admin-report-page ${isUpdating ? 'is-updating' : ''}`}>
         {/* Header */}
         <div className="report-page-header">
           <button className="btn-back" onClick={() => navigate('/admin/reports')}>
@@ -283,6 +483,11 @@ const PaymentReport = () => {
               <div>
                 <h1>Payment Report</h1>
                 <p className="subtitle">Review payment transactions and methods</p>
+                {comparison && (
+                  <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                    {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}% vs previous period
+                  </span>
+                )}
               </div>
             </div>
             <div className="header-actions">
@@ -299,6 +504,74 @@ const PaymentReport = () => {
                 </svg>
               </button>
             </div>
+          </div>
+          <div className="report-controls">
+            <div className="report-period-nav">
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(-1)}>
+                ← Prev
+              </button>
+              <span className="period-nav-current">{getRangePeriodLabel(selectedRange, periodAnchor)}</span>
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(1)}>
+                Next →
+              </button>
+            </div>
+            <div className="report-range-group">
+              {REPORT_RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`report-range-btn ${selectedRange === opt.value ? 'is-active' : ''}`}
+                  onClick={() => handleRangeChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="report-chart-panel">
+          <div className="report-chart-header">
+            <h3 className="report-chart-title">Payment Analytics</h3>
+            {comparison && (
+              <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <div className="report-chart-box" ref={chartRef}>
+            <div className="report-chart-grid two-col">
+              <ModernReportChart
+                type="line"
+                data={paymentTimelineData}
+                xKey="label"
+                valueKey="value"
+                title="Payment Trend"
+                description="Orange trend line with smooth area reveal"
+                colors={['#f59e0b', '#f97316']}
+                seriesLabel="Amount"
+                valuePrefix="₹"
+                showArea
+                showPeakLow
+                animationDuration={800}
+              />
+              <ModernReportChart
+                type="pie"
+                data={paymentMethodPieData}
+                xKey="name"
+                valueKey="value"
+                title="COD vs Online"
+                description="Animated payment split with percentage labels"
+                colors={['#f59e0b', '#3b82f6', '#f97316']}
+                seriesLabel="Transactions"
+                animationDuration={800}
+              />
+            </div>
+            {showNoDataHint && (
+              <div className="report-chart-overlay">
+                <span className="report-chart-overlay__text">No sales recorded</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -7,6 +7,24 @@ import useToast from '../../hooks/useToast';
 import api from '../../services/api';
 import './ReportStyles.css';
 import { addShopHeader, addPageNumbers, loadUnicodeFonts, pdfRupee } from '../../utils/pdfUtils';
+import {
+  REPORT_RANGE_OPTIONS,
+  getRangeTitle,
+  getRangeDates,
+  shiftRangeAnchor,
+  getRangePeriodLabel,
+  formatDateInput,
+  formatDateLabel,
+} from '../../utils/reportRange';
+import {
+  getTimelinePoints,
+  mapSeriesToTimeline,
+  bucketKeyForDate,
+  hasAnyNonZero,
+} from '../../utils/reportChartTimeline';
+import ModernReportChart from '../../components/admin/ModernReportChart';
+import useReportAutoRefresh from '../../hooks/useReportAutoRefresh';
+import { filterByDateRange } from '../../utils/reportDataSync';
 
 const CustomerReport = () => {
   const navigate = useNavigate();
@@ -14,13 +32,23 @@ const CustomerReport = () => {
   
   const { loading, run } = useAdminLoader();
   const [exporting, setExporting] = useState(false);
+  const [allCustomerData, setAllCustomerData] = useState([]);
   const [customerData, setCustomerData] = useState([]);
+  const [selectedRange, setSelectedRange] = useState('monthly');
+  const [periodAnchor, setPeriodAnchor] = useState(new Date());
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [comparison, setComparison] = useState(null);
+  const [backendChart, setBackendChart] = useState(null);
+  const [growthTrend, setGrowthTrend] = useState([]);
+  const [dateRangeLabel, setDateRangeLabel] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const initialRange = getRangeDates('monthly');
   const [filters, setFilters] = useState({
     search: '',
     accountStatus: '',
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: formatDateInput(initialRange.from),
+    dateTo: formatDateInput(initialRange.to),
     minOrders: '',
     maxOrders: '',
     minAmount: '',
@@ -39,12 +67,22 @@ const CustomerReport = () => {
     totalRevenue: 0,
     totalOrders: 0
   });
+  const chartRef = useRef(null);
 
   useEffect(() => {
-    run(fetchCustomerData);
+    let mounted = true;
+    run(async () => {
+      await fetchCustomerData(selectedRange, null);
+    }).finally(() => {
+      if (mounted) setIsInitialLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const fetchCustomerData = async () => {
+  const fetchCustomerData = async (rangeOverride = selectedRange, filtersOverride = null) => {
+    const activeFilters = filtersOverride || filters;
     try {
       const adminToken = localStorage.getItem('adminToken');
       if (!adminToken) {
@@ -53,14 +91,15 @@ const CustomerReport = () => {
       }
 
       const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.accountStatus) params.append('accountStatus', filters.accountStatus);
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.append('dateTo', filters.dateTo);
-      if (filters.minOrders) params.append('minOrders', filters.minOrders);
-      if (filters.maxOrders) params.append('maxOrders', filters.maxOrders);
-      if (filters.minAmount) params.append('minAmount', filters.minAmount);
-      if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
+      if (activeFilters.search) params.append('search', activeFilters.search);
+      if (activeFilters.accountStatus) params.append('accountStatus', activeFilters.accountStatus);
+      if (activeFilters.dateFrom) params.append('dateFrom', activeFilters.dateFrom);
+      if (activeFilters.dateTo) params.append('dateTo', activeFilters.dateTo);
+      if (activeFilters.minOrders) params.append('minOrders', activeFilters.minOrders);
+      if (activeFilters.maxOrders) params.append('maxOrders', activeFilters.maxOrders);
+      if (activeFilters.minAmount) params.append('minAmount', activeFilters.minAmount);
+      if (activeFilters.maxAmount) params.append('maxAmount', activeFilters.maxAmount);
+      params.append('range', rangeOverride);
 
       const queryString = params.toString();
       const endpoint = queryString ? `/admin/reports/customers?${queryString}` : '/admin/reports/customers';
@@ -75,25 +114,16 @@ const CustomerReport = () => {
       if (response.data.success) {
         const reportData = response.data.data || [];
         const summary = response.data.summary || {};
-        
-        setCustomerData(reportData);
-        
-        // Use summary data from API
-        setAnalytics({
-          totalCustomers: summary.totalCustomers || 0,
-          activeCustomers: summary.activeCustomers || 0,
-          newCustomersThisMonth: summary.newCustomers || 0,
-          averageOrders: summary.averageOrdersPerCustomer || 0,
-          totalRevenue: summary.totalRevenue || 0,
-          totalOrders: reportData.reduce((sum, customer) => sum + (customer.totalOrders || 0), 0)
-        });
-        
-        // Set pagination if using paginated endpoint
-        setPagination({
-          currentPage: 1,
-          totalPages: 1,
-          totalUsers: reportData.length
-        });
+        const chart = response.data.chart || null;
+
+        setAllCustomerData(reportData);
+        setBackendChart(chart);
+        setComparison(summary.comparison || null);
+        if (summary.dateRange?.from && summary.dateRange?.to) {
+          setDateRangeLabel(`${formatDateLabel(summary.dateRange.from)} - ${formatDateLabel(summary.dateRange.to)}`);
+        } else {
+          setDateRangeLabel('');
+        }
         
         console.log(`✅ Successfully fetched ${reportData.length} customers`);
         console.log('📈 Summary:', summary);
@@ -115,6 +145,9 @@ const CustomerReport = () => {
       } else if (err.response?.status === 500) {
         error('Server error. Please try again later.');
       } else {
+        setComparison(null);
+        setBackendChart(null);
+        setGrowthTrend([]);
         error(err.response?.data?.message || 'Failed to fetch customer data');
       }
     } finally {
@@ -122,21 +155,135 @@ const CustomerReport = () => {
     }
   };
 
+  useEffect(() => {
+    const filtered = filterByDateRange(
+      allCustomerData,
+      selectedRange,
+      'createdAt',
+      filters.dateFrom,
+      filters.dateTo
+    );
+
+    setCustomerData(filtered);
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+
+    const totals = filtered.reduce(
+      (acc, customer) => {
+        const orders = Number(customer.totalOrders || 0);
+        const amount = Number(customer.totalAmount || customer.totalSpent || 0);
+        const status = String(customer.accountStatus || customer.status || '').toLowerCase();
+        const createdAt = new Date(customer.createdAt || customer.joinedAt || 0);
+
+        acc.totalOrders += orders;
+        acc.totalRevenue += amount;
+        if (status === 'active') {
+          acc.activeCustomers += 1;
+        }
+        if (!Number.isNaN(createdAt.getTime()) && createdAt >= thirtyDaysAgo) {
+          acc.newCustomersThisMonth += 1;
+        }
+        return acc;
+      },
+      {
+        activeCustomers: 0,
+        newCustomersThisMonth: 0,
+        totalRevenue: 0,
+        totalOrders: 0,
+      }
+    );
+
+    const totalCustomers = filtered.length;
+    setAnalytics({
+      totalCustomers,
+      activeCustomers: totals.activeCustomers,
+      newCustomersThisMonth: totals.newCustomersThisMonth,
+      averageOrders: totalCustomers ? totals.totalOrders / totalCustomers : 0,
+      totalRevenue: totals.totalRevenue,
+      totalOrders: totals.totalOrders,
+    });
+
+    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
+    const trend = mapSeriesToTimeline(timeline, filtered, {
+      getBucketKey: (item) => bucketKeyForDate(item.createdAt || item.joinedAt, selectedRange),
+      getValue: () => 1,
+    });
+    setGrowthTrend(trend);
+
+    setPagination((prev) => ({
+      ...prev,
+      totalUsers: totalCustomers,
+      totalPages: 1,
+    }));
+  }, [allCustomerData, selectedRange, filters.dateFrom, filters.dateTo]);
+
+  useReportAutoRefresh(
+    () => fetchCustomerData(selectedRange, filters),
+    { intervalMs: 10000 }
+  );
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleApplyFilters = () => {
-    run(fetchCustomerData);
+  const handleApplyFilters = async () => {
+    setIsUpdating(true);
+    try {
+      await fetchCustomerData(selectedRange, filters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRangeChange = async (range) => {
+    if (range === selectedRange) return;
+    const nextAnchor = new Date();
+    const next = getRangeDates(range, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+    setPeriodAnchor(nextAnchor);
+    setSelectedRange(range);
+    setFilters(nextFilters);
+    setIsUpdating(true);
+    try {
+      await fetchCustomerData(range, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleShiftPeriod = async (direction) => {
+    const nextAnchor = shiftRangeAnchor(selectedRange, periodAnchor, direction);
+    const next = getRangeDates(selectedRange, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+
+    setPeriodAnchor(nextAnchor);
+    setFilters(nextFilters);
+    setIsUpdating(true);
+    try {
+      await fetchCustomerData(selectedRange, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleClearFilters = () => {
+    const currentRange = getRangeDates(selectedRange);
     setFilters({
       search: '',
       accountStatus: '',
-      dateFrom: '',
-      dateTo: '',
+      dateFrom: formatDateInput(currentRange.from),
+      dateTo: formatDateInput(currentRange.to),
       minOrders: '',
       maxOrders: '',
       minAmount: '',
@@ -154,6 +301,7 @@ const CustomerReport = () => {
     try {
       const { jsPDF } = await import('jspdf');
       const autoTable = (await import('jspdf-autotable')).default;
+      const html2canvas = (await import('html2canvas')).default;
       
       const doc = new jsPDF({ orientation: 'landscape' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -162,6 +310,19 @@ const CustomerReport = () => {
       const PDF_FONT = await loadUnicodeFonts(doc);
 
       let yPos = addShopHeader(doc, 'CUSTOMER REPORT', [139, 92, 246]);
+
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`${getRangeTitle(selectedRange)} Customer Report`, 14, yPos);
+      yPos += 5;
+      if (dateRangeLabel) {
+        doc.setFont(PDF_FONT, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Range: ${dateRangeLabel}`, 14, yPos);
+        yPos += 5;
+      }
 
       // Reset text style for content
       doc.setFont(PDF_FONT, 'normal');
@@ -207,6 +368,31 @@ const CustomerReport = () => {
       });
       
       yPos = doc.lastAutoTable.finalY + 10;
+
+      if (chartRef.current) {
+        const canvas = await html2canvas(chartRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const chartWidth = pageWidth - 28;
+        const chartHeight = Math.min((canvas.height * chartWidth) / canvas.width, 85);
+
+        if (yPos + chartHeight + 14 > doc.internal.pageSize.getHeight()) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFont(PDF_FONT, 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(139, 92, 246);
+        doc.text('Customer Graphs', 14, yPos);
+        yPos += 6;
+
+        doc.addImage(imgData, 'PNG', 14, yPos, chartWidth, chartHeight);
+        yPos += chartHeight + 8;
+      }
       
       // Detailed Customer Data
       doc.setFont(PDF_FONT, 'bold');
@@ -252,7 +438,7 @@ const CustomerReport = () => {
       
       // Save PDF
       addPageNumbers(doc, [139, 92, 246]);
-      const fileName = `customer-report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `customers-report-${selectedRange}.pdf`;
       doc.save(fileName);
       
       success('Customer report exported as PDF successfully');
@@ -272,7 +458,43 @@ const CustomerReport = () => {
     });
   };
 
-  if (loading) {
+  const customerChartData = useMemo(() => {
+    if (backendChart?.labels?.length && backendChart?.data?.length) {
+      return backendChart.labels.map((label, index) => ({
+        label,
+        value: Number(backendChart.data[index] || 0),
+      }));
+    }
+
+    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
+    return mapSeriesToTimeline(timeline, growthTrend, {
+      getBucketKey: (item) => bucketKeyForDate(item.date || item.name, selectedRange),
+      getValue: (item) => Number(item.users || item.value || 0),
+    });
+  }, [backendChart, growthTrend, selectedRange, filters.dateFrom, filters.dateTo]);
+  const showNoDataHint = !hasAnyNonZero(customerChartData);
+  const topCustomersData = useMemo(() => {
+    const ranked = [...customerData]
+      .sort((a, b) => Number(b.totalSpent || 0) - Number(a.totalSpent || 0))
+      .slice(0, 5);
+
+    if (ranked.length === 0) {
+      return [
+        { name: 'C1', amount: 0 },
+        { name: 'C2', amount: 0 },
+        { name: 'C3', amount: 0 },
+        { name: 'C4', amount: 0 },
+        { name: 'C5', amount: 0 },
+      ];
+    }
+
+    return ranked.map((customer) => ({
+      name: customer.name?.split(' ')[0] || 'User',
+      amount: Number(customer.totalSpent || 0),
+    }));
+  }, [customerData]);
+
+  if (loading && isInitialLoading) {
     return (
       <AdminLayout>
         <DashboardSkeleton title="Loading Customer Report" />
@@ -282,7 +504,7 @@ const CustomerReport = () => {
 
   return (
     <AdminLayout>
-      <div className="admin-report-page">
+      <div className={`admin-report-page ${isUpdating ? 'is-updating' : ''}`}>
         {/* Header */}
         <div className="report-page-header">
           <button className="btn-back" onClick={() => navigate('/admin/reports')}>
@@ -299,6 +521,11 @@ const CustomerReport = () => {
               <div>
                 <h1>Customer Report</h1>
                 <p className="subtitle">Analyze customer behavior and demographics</p>
+                {comparison && (
+                  <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                    {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}% vs previous period
+                  </span>
+                )}
               </div>
             </div>
             <div className="header-actions">
@@ -315,6 +542,76 @@ const CustomerReport = () => {
                 </svg>
               </button>
             </div>
+          </div>
+          <div className="report-controls">
+            <div className="report-period-nav">
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(-1)}>
+                ← Prev
+              </button>
+              <span className="period-nav-current">{getRangePeriodLabel(selectedRange, periodAnchor)}</span>
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(1)}>
+                Next →
+              </button>
+            </div>
+            <div className="report-range-group">
+              {REPORT_RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`report-range-btn ${selectedRange === opt.value ? 'is-active' : ''}`}
+                  onClick={() => handleRangeChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="report-chart-panel">
+          <div className="report-chart-header">
+            <h3 className="report-chart-title">Customer Analytics</h3>
+            {comparison && (
+              <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <div className="report-chart-box" ref={chartRef}>
+            <div className="report-chart-grid two-col">
+              <ModernReportChart
+                type="line"
+                data={customerChartData}
+                xKey="label"
+                valueKey="value"
+                title="User Growth Curve"
+                description="Smooth onboarding curve with trend markers"
+                colors={['#8b5cf6', '#6d28d9']}
+                seriesLabel="Users"
+                showArea
+                showPeakLow
+                animationDuration={800}
+              />
+              <ModernReportChart
+                type="bar"
+                data={topCustomersData}
+                xKey="name"
+                valueKey="amount"
+                title="Top Customers"
+                description="Horizontal spend leaderboard for quick comparison"
+                colors={['#8b5cf6', '#6d28d9']}
+                seriesLabel="Spent"
+                valuePrefix="₹"
+                horizontal
+                showPeakLow
+                animationDuration={800}
+              />
+            </div>
+            {showNoDataHint && (
+              <div className="report-chart-overlay">
+                <span className="report-chart-overlay__text">No sales recorded</span>
+              </div>
+            )}
           </div>
         </div>
 

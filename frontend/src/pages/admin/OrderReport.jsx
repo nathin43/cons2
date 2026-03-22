@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import DashboardSkeleton from '../../components/DashboardSkeleton';
@@ -7,6 +7,24 @@ import useToast from '../../hooks/useToast';
 import api from '../../services/api';
 import './ReportStyles.css';
 import { addShopHeader, addPageNumbers, loadUnicodeFonts, pdfRupee } from '../../utils/pdfUtils';
+import {
+  REPORT_RANGE_OPTIONS,
+  getRangeTitle,
+  getRangeDates,
+  shiftRangeAnchor,
+  getRangePeriodLabel,
+  formatDateInput,
+  formatDateLabel,
+} from '../../utils/reportRange';
+import {
+  getTimelinePoints,
+  mapSeriesToTimeline,
+  bucketKeyForDate,
+  hasAnyNonZero,
+} from '../../utils/reportChartTimeline';
+import ModernReportChart from '../../components/admin/ModernReportChart';
+import useReportAutoRefresh from '../../hooks/useReportAutoRefresh';
+import { filterByDateRange } from '../../utils/reportDataSync';
 
 const OrderReport = () => {
   const navigate = useNavigate();
@@ -14,14 +32,24 @@ const OrderReport = () => {
   
   const { loading, run } = useAdminLoader();
   const [exporting, setExporting] = useState(false);
+  const [allOrderData, setAllOrderData] = useState([]);
   const [orderData, setOrderData] = useState([]);
+  const [selectedRange, setSelectedRange] = useState('monthly');
+  const [periodAnchor, setPeriodAnchor] = useState(new Date());
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [comparison, setComparison] = useState(null);
+  const [backendChart, setBackendChart] = useState(null);
+  const [statusDistribution, setStatusDistribution] = useState([]);
+  const [dateRangeLabel, setDateRangeLabel] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const initialRange = getRangeDates('monthly');
   const [filters, setFilters] = useState({
     search: '',
     status: '',
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: formatDateInput(initialRange.from),
+    dateTo: formatDateInput(initialRange.to),
     paymentMethod: ''
   });
   const [analytics, setAnalytics] = useState({
@@ -34,9 +62,26 @@ const OrderReport = () => {
   const isFetchingRef = useRef(false);
   const cacheRef = useRef(null);
   const cacheTimeRef = useRef(0);
+  const chartRef = useRef(null);
   const CACHE_DURATION = 30000;
+  const orderTimelineData = useMemo(() => {
+    if (backendChart?.labels?.length && backendChart?.data?.length) {
+      return backendChart.labels.map((label, index) => ({
+        label,
+        value: Number(backendChart.data[index] || 0),
+      }));
+    }
 
-  const fetchOrderData = useCallback(async (forceRefresh = false) => {
+    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
+    return mapSeriesToTimeline(timeline, orderData, {
+      getBucketKey: (item) => bucketKeyForDate(item.createdAt, selectedRange),
+      getValue: () => 1,
+    });
+  }, [backendChart, orderData, selectedRange, filters.dateFrom, filters.dateTo]);
+  const showNoDataHint = !hasAnyNonZero(orderTimelineData);
+
+  const fetchOrderData = useCallback(async (forceRefresh = false, rangeOverride = selectedRange, filtersOverride = null) => {
+    const activeFilters = filtersOverride || filters;
     if (isFetchingRef.current && !forceRefresh) {
       console.log('📋 Order fetch already in progress, skipping...');
       return;
@@ -44,8 +89,7 @@ const OrderReport = () => {
 
     if (!forceRefresh && cacheRef.current && (Date.now() - cacheTimeRef.current < CACHE_DURATION)) {
       console.log('📋 Using cached order data');
-      setOrderData(cacheRef.current.data);
-      setAnalytics(cacheRef.current.analytics);
+      setAllOrderData(cacheRef.current.data);
       return; // run() handles loading=false
     }
     
@@ -61,11 +105,12 @@ const OrderReport = () => {
       }
 
       const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.append('dateTo', filters.dateTo);
-      if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
+      if (activeFilters.search) params.append('search', activeFilters.search);
+      if (activeFilters.status) params.append('status', activeFilters.status);
+      if (activeFilters.dateFrom) params.append('dateFrom', activeFilters.dateFrom);
+      if (activeFilters.dateTo) params.append('dateTo', activeFilters.dateTo);
+      if (activeFilters.paymentMethod) params.append('paymentMethod', activeFilters.paymentMethod);
+      params.append('range', rangeOverride);
 
       const queryString = params.toString();
       const endpoint = queryString ? `/admin/reports/orders?${queryString}` : '/admin/reports/orders';
@@ -76,18 +121,18 @@ const OrderReport = () => {
       if (response.data?.success) {
         const reportData = response.data.data || [];
         const summary = response.data.summary || {};
-        
-        const analyticsData = {
-          totalOrders: summary.totalOrders || 0,
-          pending: summary.pending || 0,
-          processing: summary.processing || 0,
-          delivered: summary.delivered || 0
-        };
+        const chart = response.data.chart || null;
 
-        setOrderData(reportData);
-        setAnalytics(analyticsData);
+        setAllOrderData(reportData);
+        setBackendChart(chart);
+        setComparison(summary.comparison || null);
+        if (summary.dateRange?.from && summary.dateRange?.to) {
+          setDateRangeLabel(`${formatDateLabel(summary.dateRange.from)} - ${formatDateLabel(summary.dateRange.to)}`);
+        } else {
+          setDateRangeLabel('');
+        }
 
-        cacheRef.current = { data: reportData, analytics: analyticsData };
+        cacheRef.current = { data: reportData };
         cacheTimeRef.current = Date.now();
         
         console.log(`✅ Order report loaded: ${reportData.length} records`);
@@ -106,33 +151,134 @@ const OrderReport = () => {
       
       const errorMsg = err.response?.data?.message || 'Failed to load order report. Please try again.';
       setErrorMessage(errorMsg);
+      setBackendChart(null);
+      setComparison(null);
+      setStatusDistribution([]);
       error(errorMsg);
     } finally {
       isFetchingRef.current = false;
       // loading managed by run()
     }
-  }, [filters, navigate, error]);
+  }, [filters, navigate, error, selectedRange]);
 
   useEffect(() => {
-    run(fetchOrderData);
+    let mounted = true;
+    run(async () => {
+      await fetchOrderData(true, selectedRange);
+    }).finally(() => {
+      if (mounted) setIsInitialLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  useEffect(() => {
+    const filtered = filterByDateRange(
+      allOrderData,
+      selectedRange,
+      'createdAt',
+      filters.dateFrom,
+      filters.dateTo
+    );
+
+    setOrderData(filtered);
+
+    const counts = filtered.reduce(
+      (acc, item) => {
+        const status = String(item.orderStatus || item.status || '').toLowerCase();
+        acc.totalOrders += 1;
+        if (status === 'pending') acc.pending += 1;
+        if (status === 'processing') acc.processing += 1;
+        if (status === 'delivered' || status === 'completed') acc.delivered += 1;
+        acc.distribution[status] = (acc.distribution[status] || 0) + 1;
+        return acc;
+      },
+      { totalOrders: 0, pending: 0, processing: 0, delivered: 0, distribution: {} }
+    );
+
+    setAnalytics({
+      totalOrders: counts.totalOrders,
+      pending: counts.pending,
+      processing: counts.processing,
+      delivered: counts.delivered,
+    });
+
+    const distribution = Object.entries(counts.distribution).map(([name, value]) => ({
+      name,
+      value,
+    }));
+    setStatusDistribution(distribution);
+  }, [allOrderData, selectedRange, filters.dateFrom, filters.dateTo]);
+
+  useReportAutoRefresh(
+    () => fetchOrderData(true, selectedRange, filters),
+    { intervalMs: 10000 }
+  );
+
+  const handleRangeChange = async (range) => {
+    if (range === selectedRange) return;
+    const nextAnchor = new Date();
+    const next = getRangeDates(range, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+    setPeriodAnchor(nextAnchor);
+    setSelectedRange(range);
+    setFilters(nextFilters);
+    cacheRef.current = null;
+    setIsUpdating(true);
+    try {
+      await fetchOrderData(true, range, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleShiftPeriod = async (direction) => {
+    const nextAnchor = shiftRangeAnchor(selectedRange, periodAnchor, direction);
+    const next = getRangeDates(selectedRange, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+
+    setPeriodAnchor(nextAnchor);
+    setFilters(nextFilters);
+    cacheRef.current = null;
+    setIsUpdating(true);
+    try {
+      await fetchOrderData(true, selectedRange, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = async () => {
     cacheRef.current = null;
-    run(() => fetchOrderData(true));
+    setIsUpdating(true);
+    try {
+      await fetchOrderData(true, selectedRange);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleClearFilters = () => {
+    const currentRange = getRangeDates(selectedRange);
     setFilters({
       search: '',
       status: '',
-      dateFrom: '',
-      dateTo: '',
+      dateFrom: formatDateInput(currentRange.from),
+      dateTo: formatDateInput(currentRange.to),
       paymentMethod: ''
     });
   };
@@ -142,6 +288,7 @@ const OrderReport = () => {
     try {
       const { jsPDF } = await import('jspdf');
       const autoTable = (await import('jspdf-autotable')).default;
+      const html2canvas = (await import('html2canvas')).default;
       
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -150,6 +297,19 @@ const OrderReport = () => {
       const PDF_FONT = await loadUnicodeFonts(doc);
 
       let yPos = addShopHeader(doc, 'ORDER REPORT', [236, 72, 153]);
+
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`${getRangeTitle(selectedRange)} Order Report`, 14, yPos);
+      yPos += 5;
+      if (dateRangeLabel) {
+        doc.setFont(PDF_FONT, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Range: ${dateRangeLabel}`, 14, yPos);
+        yPos += 5;
+      }
 
       // Reset text style for content
       doc.setFont(PDF_FONT, 'normal');
@@ -196,6 +356,31 @@ const OrderReport = () => {
       });
       
       yPos = doc.lastAutoTable.finalY + 10;
+
+      if (chartRef.current) {
+        const canvas = await html2canvas(chartRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const chartWidth = pageWidth - 28;
+        const chartHeight = Math.min((canvas.height * chartWidth) / canvas.width, 75);
+
+        if (yPos + chartHeight + 14 > doc.internal.pageSize.getHeight()) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFont(PDF_FONT, 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(236, 72, 153);
+        doc.text('Order Timeline Graph', 14, yPos);
+        yPos += 6;
+
+        doc.addImage(imgData, 'PNG', 14, yPos, chartWidth, chartHeight);
+        yPos += chartHeight + 8;
+      }
       
       // Detailed Order Data
       doc.setFont(PDF_FONT, 'bold');
@@ -228,7 +413,7 @@ const OrderReport = () => {
       
       // Save PDF
       addPageNumbers(doc, [236, 72, 153]);
-      const fileName = `order-report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `orders-report-${selectedRange}.pdf`;
       doc.save(fileName);
       
       success('Order report exported as PDF successfully');
@@ -248,7 +433,7 @@ const OrderReport = () => {
     });
   };
 
-  if (loading) {
+  if (loading && isInitialLoading) {
     return (
       <AdminLayout>
         <DashboardSkeleton title="Loading Order Report" />
@@ -258,7 +443,7 @@ const OrderReport = () => {
 
   return (
     <AdminLayout>
-      <div className="admin-report-page">
+      <div className={`admin-report-page ${isUpdating ? 'is-updating' : ''}`}>
         {/* Header */}
         <div className="report-page-header">
           <button className="btn-back" onClick={() => navigate('/admin/reports')}>
@@ -275,6 +460,11 @@ const OrderReport = () => {
               <div>
                 <h1>Order Report</h1>
                 <p className="subtitle">View order history, status, and fulfillment</p>
+                {comparison && (
+                  <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                    {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}% vs previous period
+                  </span>
+                )}
               </div>
             </div>
             <div className="header-actions">
@@ -291,6 +481,60 @@ const OrderReport = () => {
                 </svg>
               </button>
             </div>
+          </div>
+          <div className="report-controls">
+            <div className="report-period-nav">
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(-1)}>
+                ← Prev
+              </button>
+              <span className="period-nav-current">{getRangePeriodLabel(selectedRange, periodAnchor)}</span>
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(1)}>
+                Next →
+              </button>
+            </div>
+            <div className="report-range-group">
+              {REPORT_RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`report-range-btn ${selectedRange === opt.value ? 'is-active' : ''}`}
+                  onClick={() => handleRangeChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="report-chart-panel">
+          <div className="report-chart-header">
+            <h3 className="report-chart-title">Orders Timeline</h3>
+            {comparison && (
+              <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <div className="report-chart-box" ref={chartRef}>
+            <ModernReportChart
+              type="line"
+              data={orderTimelineData}
+              xKey="label"
+              valueKey="value"
+              title="Order Trend"
+              description="Clear daily/weekly/monthly order movement"
+              colors={['#ec4899', '#3b82f6']}
+              seriesLabel="Orders"
+              showArea
+              showPeakLow
+              animationDuration={800}
+            />
+            {showNoDataHint && (
+              <div className="report-chart-overlay">
+                <span className="report-chart-overlay__text">No sales recorded</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -26,6 +26,24 @@ const API = axios.create({
   timeout: 30000  // 30 second timeout for requests
 });
 
+const isReportAffectingWrite = (config = {}) => {
+  const method = String(config.method || '').toLowerCase();
+  if (!['post', 'put', 'patch', 'delete'].includes(method)) {
+    return false;
+  }
+
+  const url = String(config.url || '').toLowerCase();
+  return [
+    '/orders',
+    '/refund',
+    '/returns',
+    '/payments',
+    '/razorpay',
+    '/products',
+    '/stock',
+  ].some((pattern) => url.includes(pattern));
+};
+
 // Add token to requests if available
 API.interceptors.request.use((config) => {
   // Determine which token to use based on the route
@@ -34,7 +52,12 @@ API.interceptors.request.use((config) => {
   const userToken  = localStorage.getItem('token');
 
   // Admin-only routes — always use admin token
-  if (config.url.includes('/admin') || config.url.includes('/admin-management') || config.url.startsWith('/returns')) {
+  if (
+    config.url.includes('/admin') ||
+    config.url.includes('/admin-management') ||
+    config.url.startsWith('/returns') ||
+    config.url.startsWith('/refunds')
+  ) {
     token = adminToken;
   }
   // Customer-only routes — ONLY use user token, never fall back to adminToken
@@ -94,6 +117,19 @@ API.interceptors.request.use((config) => {
 API.interceptors.response.use(
   (response) => {
     console.log('API Response:', response.status, response.config.url);
+
+    if (typeof window !== 'undefined' && isReportAffectingWrite(response.config)) {
+      window.dispatchEvent(
+        new CustomEvent('report:data-changed', {
+          detail: {
+            method: response.config.method,
+            url: response.config.url,
+            updatedAt: Date.now(),
+          },
+        })
+      );
+    }
+
     return response;
   },
   (error) => {

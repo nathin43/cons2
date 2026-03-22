@@ -210,6 +210,184 @@ const buildUserReportPipeline = ({ filters, accountStatus, minOrders, maxOrders,
   return pipeline;
 };
 
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const startOfDayLocal = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const endOfDayLocal = (date) => {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
+const startOfWeekLocal = (date) => {
+  const d = startOfDayLocal(date);
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMonday);
+  return d;
+};
+
+const endOfWeekLocal = (date) => {
+  const start = startOfWeekLocal(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return endOfDayLocal(end);
+};
+
+const getRangeWindow = (range = 'monthly', dateFrom, dateTo) => {
+  const now = new Date();
+  const hasFrom = Boolean(dateFrom);
+  const hasTo = Boolean(dateTo);
+
+  if (hasFrom || hasTo) {
+    const from = hasFrom ? startOfDayLocal(dateFrom) : startOfDayLocal(dateTo || now);
+    const to = hasTo ? endOfDayLocal(dateTo) : endOfDayLocal(dateFrom || now);
+    return { from, to };
+  }
+
+  if (range === 'daily') {
+    return { from: startOfDayLocal(now), to: endOfDayLocal(now) };
+  }
+
+  if (range === 'weekly') {
+    return { from: startOfWeekLocal(now), to: endOfWeekLocal(now) };
+  }
+
+  if (range === 'yearly') {
+    const year = now.getFullYear();
+    return {
+      from: new Date(year, 0, 1, 0, 0, 0, 0),
+      to: new Date(year, 11, 31, 23, 59, 59, 999),
+    };
+  }
+
+  return {
+    from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+    to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+  };
+};
+
+const toDateBucketKey = (value) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getWeekdayIndex = (date) => {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return -1;
+  return (d.getDay() + 6) % 7;
+};
+
+const buildGroupedChartData = (events = [], {
+  range = 'monthly',
+  dateFrom,
+  dateTo,
+  getDate,
+  getValue,
+}) => {
+  const { from, to } = getRangeWindow(range, dateFrom, dateTo);
+
+  if (range === 'weekly') {
+    const labels = [...WEEKDAY_LABELS];
+    const data = new Array(7).fill(0);
+
+    events.forEach((event) => {
+      const value = Number(getValue(event) || 0);
+      const index = getWeekdayIndex(getDate(event));
+      if (index >= 0 && index < 7) {
+        data[index] += value;
+      }
+    });
+
+    return {
+      range,
+      labels,
+      data: data.map((value) => Number(value.toFixed(2))),
+    };
+  }
+
+  if (range === 'yearly') {
+    const labels = [...MONTH_LABELS];
+    const data = new Array(12).fill(0);
+
+    events.forEach((event) => {
+      const d = new Date(getDate(event));
+      if (Number.isNaN(d.getTime())) return;
+      const month = d.getMonth();
+      const value = Number(getValue(event) || 0);
+      if (month >= 0 && month < 12) {
+        data[month] += value;
+      }
+    });
+
+    return {
+      range,
+      labels,
+      data: data.map((value) => Number(value.toFixed(2))),
+    };
+  }
+
+  if (range === 'monthly') {
+    const labels = Array.from({ length: 31 }, (_, idx) => String(idx + 1));
+    const data = new Array(31).fill(0);
+
+    events.forEach((event) => {
+      const d = new Date(getDate(event));
+      if (Number.isNaN(d.getTime())) return;
+      const dayIndex = d.getDate() - 1;
+      const value = Number(getValue(event) || 0);
+      if (dayIndex >= 0 && dayIndex < 31) {
+        data[dayIndex] += value;
+      }
+    });
+
+    return {
+      range,
+      labels,
+      data: data.map((value) => Number(value.toFixed(2))),
+    };
+  }
+
+  // Daily: group by date key between selected range boundaries.
+  const labels = [];
+  const keys = [];
+  const valuesByKey = new Map();
+
+  const cursor = startOfDayLocal(from);
+  const last = endOfDayLocal(to);
+  while (cursor <= last) {
+    const key = toDateBucketKey(cursor);
+    keys.push(key);
+    labels.push(cursor.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  events.forEach((event) => {
+    const key = toDateBucketKey(getDate(event));
+    if (!key) return;
+    const value = Number(getValue(event) || 0);
+    valuesByKey.set(key, (valuesByKey.get(key) || 0) + value);
+  });
+
+  const data = keys.map((key) => Number((valuesByKey.get(key) || 0).toFixed(2)));
+
+  return {
+    range: 'daily',
+    labels,
+    data,
+  };
+};
+
 /**
  * Admin Report Controller
  * Handles all admin-side reporting functionality
@@ -591,7 +769,7 @@ exports.syncUserSummaryReports = async (req, res) => {
 exports.getSalesReport = async (req, res) => {
   try {
     console.log('📊 [SALES REPORT] Starting...');
-    const { dateFrom, dateTo, status, minAmount, maxAmount } = req.query;
+    const { dateFrom, dateTo, status, minAmount, maxAmount, range = 'monthly' } = req.query;
 
     // Build filters
     const filters = {};
@@ -685,6 +863,14 @@ exports.getSalesReport = async (req, res) => {
       items: order.items
     }));
 
+    const chart = buildGroupedChartData(reportData, {
+      range,
+      dateFrom,
+      dateTo,
+      getDate: (item) => item.createdAt,
+      getValue: (item) => Number(item.totalAmount || 0),
+    });
+
     // Auto-save report to database
     try {
       await GeneratedReport.saveReport(
@@ -706,6 +892,7 @@ exports.getSalesReport = async (req, res) => {
       summary,
       monthlySales,
       topProducts,
+      chart,
       data: reportData
     });
   } catch (error) {
@@ -725,7 +912,7 @@ exports.getSalesReport = async (req, res) => {
  */
 exports.getOrderReport = async (req, res) => {
   try {
-    const { search, status, dateFrom, dateTo, paymentMethod } = req.query;
+    const { search, status, dateFrom, dateTo, paymentMethod, range = 'monthly' } = req.query;
 
     // Build filters
     const filters = {};
@@ -794,6 +981,121 @@ exports.getOrderReport = async (req, res) => {
       shippingAddress: order.shippingAddress
     }));
 
+    const movementRange = range === 'daily' ? 'monthly' : range;
+    const movementWindow = getRangeWindow(movementRange, dateFrom, dateTo);
+    const productIdSet = new Set(products.map((product) => String(product._id)));
+
+    const buildMovementBuckets = () => {
+      if (movementRange === 'yearly') {
+        return Array.from({ length: 12 }, (_, monthIndex) => {
+          const start = new Date(movementWindow.from.getFullYear(), monthIndex, 1, 0, 0, 0, 0);
+          const end = new Date(movementWindow.from.getFullYear(), monthIndex + 1, 0, 23, 59, 59, 999);
+          return {
+            label: MONTH_LABELS[monthIndex],
+            start,
+            end,
+          };
+        });
+      }
+
+      const totalDays = Math.max(
+        1,
+        Math.ceil((movementWindow.to.getTime() - movementWindow.from.getTime()) / (24 * 60 * 60 * 1000)) + 1
+      );
+      const bucketSize = Math.max(1, Math.ceil(totalDays / 4));
+
+      return Array.from({ length: 4 }, (_, index) => {
+        const start = new Date(movementWindow.from);
+        start.setDate(movementWindow.from.getDate() + index * bucketSize);
+
+        const end = new Date(start);
+        end.setDate(start.getDate() + bucketSize - 1);
+        if (end > movementWindow.to) {
+          end.setTime(movementWindow.to.getTime());
+        }
+        end.setHours(23, 59, 59, 999);
+
+        return {
+          label: `Week ${index + 1}`,
+          start,
+          end,
+        };
+      });
+    };
+
+    const movementBuckets = buildMovementBuckets();
+
+    const findBucketIndex = (value) => {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return -1;
+      return movementBuckets.findIndex((bucket) => date >= bucket.start && date <= bucket.end);
+    };
+
+    const ordersForMovement = await Order.find({
+      createdAt: {
+        $gte: movementWindow.from,
+        $lte: movementWindow.to,
+      },
+      orderStatus: { $nin: ['cancelled', 'Cancelled'] },
+    })
+      .select('createdAt items.product items.quantity')
+      .lean();
+
+    const openingStock = new Array(movementBuckets.length).fill(0);
+    const addedStock = new Array(movementBuckets.length).fill(0);
+    const soldStock = new Array(movementBuckets.length).fill(0);
+    const closingStock = new Array(movementBuckets.length).fill(0);
+
+    products.forEach((product) => {
+      const index = findBucketIndex(product.createdAt);
+      if (index >= 0) {
+        addedStock[index] += Number(product.stock || 0);
+      }
+    });
+
+    ordersForMovement.forEach((order) => {
+      const index = findBucketIndex(order.createdAt);
+      if (index < 0) return;
+
+      (order.items || []).forEach((item) => {
+        const rawProductId = item?.product?._id || item?.product;
+        const productId = rawProductId ? String(rawProductId) : '';
+        if (!productIdSet.has(productId)) return;
+        soldStock[index] += Number(item?.quantity || 0);
+      });
+    });
+
+    const currentTotalStock = products.reduce((sum, product) => sum + Number(product.stock || 0), 0);
+    const totalAddedStock = addedStock.reduce((sum, value) => sum + value, 0);
+    const totalSoldStock = soldStock.reduce((sum, value) => sum + value, 0);
+
+    let rollingOpening = Math.max(0, currentTotalStock + totalSoldStock - totalAddedStock);
+    for (let i = 0; i < movementBuckets.length; i += 1) {
+      openingStock[i] = Number(rollingOpening.toFixed(2));
+      const nextClosing = Math.max(0, rollingOpening + addedStock[i] - soldStock[i]);
+      closingStock[i] = Number(nextClosing.toFixed(2));
+      rollingOpening = nextClosing;
+      addedStock[i] = Number(addedStock[i].toFixed(2));
+      soldStock[i] = Number(soldStock[i].toFixed(2));
+    }
+
+    const chart = {
+      range: movementRange,
+      labels: movementBuckets.map((bucket) => bucket.label),
+      openingStock,
+      addedStock,
+      soldStock,
+      closingStock,
+      data: closingStock,
+    };
+
+    summary.stockMovement = {
+      openingStock: openingStock[0] || 0,
+      addedStock: totalAddedStock,
+      soldStock: totalSoldStock,
+      closingStock: closingStock[closingStock.length - 1] || currentTotalStock,
+    };
+
     // Auto-save report to database
     try {
       await GeneratedReport.saveReport(
@@ -810,6 +1112,7 @@ exports.getOrderReport = async (req, res) => {
     res.status(200).json({
       success: true,
       summary,
+      chart,
       data: reportData
     });
   } catch (error) {
@@ -829,7 +1132,7 @@ exports.getOrderReport = async (req, res) => {
  */
 exports.getPaymentReport = async (req, res) => {
   try {
-    const { dateFrom, dateTo, paymentMethod, minAmount, maxAmount } = req.query;
+    const { dateFrom, dateTo, paymentMethod, minAmount, maxAmount, range = 'monthly' } = req.query;
 
     // Build filters
     const filters = {};
@@ -894,6 +1197,14 @@ exports.getPaymentReport = async (req, res) => {
       createdAt: order.createdAt
     }));
 
+    const chart = buildGroupedChartData(reportData, {
+      range,
+      dateFrom,
+      dateTo,
+      getDate: (item) => item.createdAt,
+      getValue: (item) => Number(item.totalAmount || 0),
+    });
+
     // Auto-save report to database
     try {
       await GeneratedReport.saveReport(
@@ -910,6 +1221,7 @@ exports.getPaymentReport = async (req, res) => {
     res.status(200).json({
       success: true,
       summary,
+      chart,
       data: reportData
     });
   } catch (error) {
@@ -931,15 +1243,36 @@ exports.getStockReport = async (req, res) => {
   try {
     const Product = require('../models/Product');
 
-    const { category, minStock, maxStock, stockStatus } = req.query;
+    const {
+      category,
+      minStock,
+      maxStock,
+      stockStatus,
+      search,
+      brand,
+      dateFrom,
+      dateTo,
+      range = 'monthly',
+    } = req.query;
 
     // Build filters
     const filters = {};
     if (category) filters.category = new RegExp(category, 'i');
+    if (search) filters.name = new RegExp(search, 'i');
+    if (brand) filters.brand = new RegExp(brand, 'i');
     if (minStock !== undefined || maxStock !== undefined) {
       filters.stock = {};
       if (minStock !== undefined) filters.stock.$gte = parseInt(minStock);
       if (maxStock !== undefined) filters.stock.$lte = parseInt(maxStock);
+    }
+    if (dateFrom || dateTo) {
+      filters.createdAt = {};
+      if (dateFrom) filters.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        filters.createdAt.$lte = endDate;
+      }
     }
 
     // Apply stock status filter
@@ -1001,6 +1334,14 @@ exports.getStockReport = async (req, res) => {
       updatedAt: product.updatedAt
     }));
 
+    const chart = buildGroupedChartData(reportData, {
+      range,
+      dateFrom,
+      dateTo,
+      getDate: (item) => item.createdAt,
+      getValue: () => 1,
+    });
+
     // Auto-save report to database
     try {
       await GeneratedReport.saveReport(
@@ -1018,6 +1359,7 @@ exports.getStockReport = async (req, res) => {
       success: true,
       summary,
       categoryBreakdown,
+      chart,
       data: reportData
     });
   } catch (error) {
@@ -1037,7 +1379,7 @@ exports.getStockReport = async (req, res) => {
  */
 exports.getCustomerReport = async (req, res) => {
   try {
-    const { accountStatus, minOrders, maxOrders, dateFrom, dateTo, search } = req.query;
+    const { accountStatus, minOrders, maxOrders, dateFrom, dateTo, search, range = 'monthly' } = req.query;
 
     // Build filters for users
     const userFilters = { role: { $in: ['customer', 'CUSTOMER', 'user'] } };
@@ -1180,6 +1522,14 @@ exports.getCustomerReport = async (req, res) => {
       createdAt: user.createdAt
     }));
 
+    const chart = buildGroupedChartData(reportData, {
+      range,
+      dateFrom,
+      dateTo,
+      getDate: (item) => item.createdAt,
+      getValue: () => 1,
+    });
+
     // Auto-save report to database
     try {
       await GeneratedReport.saveReport(
@@ -1197,6 +1547,7 @@ exports.getCustomerReport = async (req, res) => {
       success: true,
       summary,
       topCustomers,
+      chart,
       data: reportData
     });
   } catch (error) {

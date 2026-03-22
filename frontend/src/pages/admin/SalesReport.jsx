@@ -7,6 +7,24 @@ import useToast from '../../hooks/useToast';
 import api from '../../services/api';
 import './ReportStyles.css';
 import { addShopHeader, addPageNumbers, loadUnicodeFonts, pdfRupee } from '../../utils/pdfUtils';
+import {
+  REPORT_RANGE_OPTIONS,
+  getRangeTitle,
+  getRangeDates,
+  shiftRangeAnchor,
+  getRangePeriodLabel,
+  formatDateInput,
+  formatDateLabel,
+} from '../../utils/reportRange';
+import {
+  getTimelinePoints,
+  mapSeriesToTimeline,
+  bucketKeyForDate,
+  hasAnyNonZero,
+} from '../../utils/reportChartTimeline';
+import ModernReportChart from '../../components/admin/ModernReportChart';
+import useReportAutoRefresh from '../../hooks/useReportAutoRefresh';
+import { filterByDateRange } from '../../utils/reportDataSync';
 
 const SalesReport = () => {
   const navigate = useNavigate();
@@ -14,12 +32,22 @@ const SalesReport = () => {
   
   const { loading, run } = useAdminLoader();
   const [exporting, setExporting] = useState(false);
+  const [allSalesData, setAllSalesData] = useState([]);
   const [salesData, setSalesData] = useState([]);
+  const [salesTrend, setSalesTrend] = useState([]);
+  const [selectedRange, setSelectedRange] = useState('monthly');
+  const [periodAnchor, setPeriodAnchor] = useState(new Date());
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [comparison, setComparison] = useState(null);
+  const [backendChart, setBackendChart] = useState(null);
+  const [dateRangeLabel, setDateRangeLabel] = useState('');
+  const initialRange = useMemo(() => getRangeDates('monthly'), []);
   const [filters, setFilters] = useState({
-    dateFrom: '',
-    dateTo: '',
+    dateFrom: formatDateInput(initialRange.from),
+    dateTo: formatDateInput(initialRange.to),
     minAmount: '',
     maxAmount: '',
     status: ''
@@ -35,10 +63,12 @@ const SalesReport = () => {
   const isFetchingRef = useRef(false);
   const cacheRef = useRef(null);
   const cacheTimeRef = useRef(0);
+  const chartRef = useRef(null);
   const CACHE_DURATION = 30000; // 30 seconds
 
   // Memoized fetch function
-  const fetchSalesData = useCallback(async (forceRefresh = false) => {
+  const fetchSalesData = useCallback(async (forceRefresh = false, rangeOverride = selectedRange, filtersOverride = null) => {
+    const activeFilters = filtersOverride || filters;
     // Prevent duplicate simultaneous calls
     if (isFetchingRef.current && !forceRefresh) {
       console.log('📊 Sales fetch already in progress, skipping...');
@@ -48,8 +78,7 @@ const SalesReport = () => {
     // Check cache if not forcing refresh
     if (!forceRefresh && cacheRef.current && (Date.now() - cacheTimeRef.current < CACHE_DURATION)) {
       console.log('📊 Using cached sales data');
-      setSalesData(cacheRef.current.data);
-      setAnalytics(cacheRef.current.analytics);
+      setAllSalesData(cacheRef.current.data);
       return; // run() handles loading=false
     }
     
@@ -65,11 +94,12 @@ const SalesReport = () => {
       }
 
       const params = new URLSearchParams();
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.append('dateTo', filters.dateTo);
-      if (filters.minAmount) params.append('minAmount', filters.minAmount);
-      if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
-      if (filters.status) params.append('status', filters.status);
+      if (activeFilters.dateFrom) params.append('dateFrom', activeFilters.dateFrom);
+      if (activeFilters.dateTo) params.append('dateTo', activeFilters.dateTo);
+      if (activeFilters.minAmount) params.append('minAmount', activeFilters.minAmount);
+      if (activeFilters.maxAmount) params.append('maxAmount', activeFilters.maxAmount);
+      if (activeFilters.status) params.append('status', activeFilters.status);
+      params.append('range', rangeOverride);
 
       const queryString = params.toString();
       const endpoint = queryString ? `/admin/reports/sales?${queryString}` : '/admin/reports/sales';
@@ -80,20 +110,21 @@ const SalesReport = () => {
       if (response.data?.success) {
         const reportData = response.data.data || [];
         const summary = response.data.summary || {};
-        
-        const analyticsData = {
-          totalSales: summary.totalSales || 0,
-          totalRevenue: summary.totalRevenue || 0,
-          averageOrderValue: summary.averageOrderValue || 0,
-          completedOrders: summary.completedOrders || 0
-        };
+        const chart = response.data.chart || null;
 
         // Update state
-        setSalesData(reportData);
-        setAnalytics(analyticsData);
+        setAllSalesData(reportData);
+        setBackendChart(chart);
+        setComparison(summary.comparison || null);
+
+        if (summary.dateRange?.from && summary.dateRange?.to) {
+          setDateRangeLabel(`${formatDateLabel(summary.dateRange.from)} - ${formatDateLabel(summary.dateRange.to)}`);
+        } else {
+          setDateRangeLabel('');
+        }
 
         // Cache the results
-        cacheRef.current = { data: reportData, analytics: analyticsData };
+        cacheRef.current = { data: reportData };
         cacheTimeRef.current = Date.now();
         
         console.log(`✅ Sales report loaded: ${reportData.length} records`);
@@ -112,32 +143,127 @@ const SalesReport = () => {
       
       const errorMsg = err.response?.data?.message || 'Failed to load sales report. Please try again.';
       setErrorMessage(errorMsg);
+      setSalesTrend([]);
+      setBackendChart(null);
+      setComparison(null);
       error(errorMsg);
     } finally {
       isFetchingRef.current = false;
       // loading state managed by useAdminLoader's run()
     }
-  }, [filters, navigate, error]);
+  }, [filters, navigate, error, selectedRange]);
 
-  // Initial load — enforces 2s minimum display time matching Dashboard
   useEffect(() => {
-    run(fetchSalesData);
+    let mounted = true;
+    run(async () => {
+      await fetchSalesData(true, selectedRange);
+    }).finally(() => {
+      if (mounted) setIsInitialLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  useEffect(() => {
+    const filtered = filterByDateRange(
+      allSalesData,
+      selectedRange,
+      'createdAt',
+      filters.dateFrom,
+      filters.dateTo
+    );
+
+    setSalesData(filtered);
+
+    const totalRevenue = filtered.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+    const totalSales = filtered.length;
+    const completedOrders = filtered.filter((item) => {
+      const status = String(item.orderStatus || item.status || '').toLowerCase();
+      return status === 'delivered' || status === 'completed';
+    }).length;
+
+    setAnalytics({
+      totalSales,
+      totalRevenue,
+      averageOrderValue: totalSales ? totalRevenue / totalSales : 0,
+      completedOrders,
+    });
+
+    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
+    const trend = mapSeriesToTimeline(timeline, filtered, {
+      getBucketKey: (item) => bucketKeyForDate(item.createdAt, selectedRange),
+      getValue: (item) => Number(item.totalAmount || 0),
+    });
+    setSalesTrend(trend);
+  }, [allSalesData, selectedRange, filters.dateFrom, filters.dateTo]);
+
+  useReportAutoRefresh(
+    () => fetchSalesData(true, selectedRange, filters),
+    { intervalMs: 10000 }
+  );
+
+  const handleRangeChange = async (range) => {
+    if (range === selectedRange) return;
+    const nextAnchor = new Date();
+    const next = getRangeDates(range, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+    setPeriodAnchor(nextAnchor);
+    setSelectedRange(range);
+    setFilters(nextFilters);
+    cacheRef.current = null;
+    setIsUpdating(true);
+    try {
+      await fetchSalesData(true, range, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleShiftPeriod = async (direction) => {
+    const nextAnchor = shiftRangeAnchor(selectedRange, periodAnchor, direction);
+    const next = getRangeDates(selectedRange, nextAnchor);
+    const nextFilters = {
+      ...filters,
+      dateFrom: formatDateInput(next.from),
+      dateTo: formatDateInput(next.to),
+    };
+
+    setPeriodAnchor(nextAnchor);
+    setFilters(nextFilters);
+    cacheRef.current = null;
+    setIsUpdating(true);
+    try {
+      await fetchSalesData(true, selectedRange, nextFilters);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = async () => {
     cacheRef.current = null; // Clear cache when filters change
-    run(() => fetchSalesData(true)); // enforces same 2s minimum
+    setIsUpdating(true);
+    try {
+      await fetchSalesData(true, selectedRange);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleClearFilters = () => {
+    const currentRange = getRangeDates(selectedRange);
     setFilters({
-      dateFrom: '',
-      dateTo: '',
+      dateFrom: formatDateInput(currentRange.from),
+      dateTo: formatDateInput(currentRange.to),
       minAmount: '',
       maxAmount: '',
       status: ''
@@ -149,6 +275,7 @@ const SalesReport = () => {
     try {
       const { jsPDF } = await import('jspdf');
       const autoTable = (await import('jspdf-autotable')).default;
+      const html2canvas = (await import('html2canvas')).default;
 
       // ── Palette ───────────────────────────────────────────────────────────
       const ACCENT  = [59, 130, 246];          // blue accent
@@ -171,6 +298,19 @@ const SalesReport = () => {
 
       // ── 1. Shop letterhead ────────────────────────────────────────────────
       let y = addShopHeader(doc, 'SALES REPORT', ACCENT);
+
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...TEXT);
+      doc.text(`${getRangeTitle(selectedRange)} Sales Report`, MARGIN, y);
+      y += 5;
+      if (dateRangeLabel) {
+        doc.setFont(PDF_FONT, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...SUBTEXT);
+        doc.text(`Range: ${dateRangeLabel}`, MARGIN, y);
+        y += 5;
+      }
 
       // ── 2. Active filters (shown only when filters are applied) ───────────
       const activeFilters = [
@@ -219,6 +359,28 @@ const SalesReport = () => {
       });
 
       y += cardH + 6;
+
+      if (chartRef.current) {
+        const canvas = await html2canvas(chartRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const chartW = CONTENT_W;
+        const chartH = Math.min((canvas.height * chartW) / canvas.width, 70);
+
+        doc.setFillColor(...ACCENT);
+        doc.rect(MARGIN, y, 3, 7, 'F');
+        doc.setFont(PDF_FONT, 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...ACCENT);
+        doc.text('TREND CHART', MARGIN + 6, y + 5.2);
+        y += 9;
+
+        doc.addImage(imgData, 'PNG', MARGIN, y, chartW, chartH);
+        y += chartH + 7;
+      }
 
       // ── 4. Section heading ────────────────────────────────────────────────
       doc.setFillColor(...ACCENT);
@@ -383,7 +545,7 @@ const SalesReport = () => {
 
       // ── 8. Page numbers ───────────────────────────────────────────────────
       addPageNumbers(doc, ACCENT);
-      doc.save(`sales-report_${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`sales-report-${selectedRange}.pdf`);
       success('Sales report exported successfully');
     } catch (err) {
       error('Failed to export PDF');
@@ -401,8 +563,24 @@ const SalesReport = () => {
     });
   };
 
+  const chartData = useMemo(() => {
+    if (backendChart?.labels?.length && backendChart?.data?.length) {
+      return backendChart.labels.map((label, index) => ({
+        label,
+        value: Number(backendChart.data[index] || 0),
+      }));
+    }
+
+    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
+    return mapSeriesToTimeline(timeline, salesData, {
+      getBucketKey: (item) => bucketKeyForDate(item.createdAt, selectedRange),
+      getValue: (item) => Number(item.totalAmount || 0),
+    });
+  }, [backendChart, salesData, selectedRange, filters.dateFrom, filters.dateTo]);
+  const showNoDataHint = !hasAnyNonZero(chartData);
+
   // Show identical Dashboard skeleton while loading (initial or filter refresh)
-  if (loading) {
+  if (loading && isInitialLoading) {
     return (
       <AdminLayout>
         <DashboardSkeleton title="Loading Sales Report" />
@@ -412,7 +590,7 @@ const SalesReport = () => {
 
   return (
     <AdminLayout>
-      <div className="admin-report-page">
+      <div className={`admin-report-page ${isUpdating ? 'is-updating' : ''}`}>
         {/* Header */}
         <div className="report-page-header">
           <button className="btn-back" onClick={() => navigate('/admin/reports')}>
@@ -427,6 +605,11 @@ const SalesReport = () => {
               <div>
                 <h1>Sales Report</h1>
                 <p className="subtitle">Track revenue, sales trends, and performance metrics</p>
+                {comparison && (
+                  <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                    {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}% vs previous period
+                  </span>
+                )}
               </div>
             </div>
             <div className="header-actions">
@@ -443,6 +626,61 @@ const SalesReport = () => {
                 </svg>
               </button>
             </div>
+          </div>
+          <div className="report-controls">
+            <div className="report-period-nav">
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(-1)}>
+                ← Prev
+              </button>
+              <span className="period-nav-current">{getRangePeriodLabel(selectedRange, periodAnchor)}</span>
+              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(1)}>
+                Next →
+              </button>
+            </div>
+            <div className="report-range-group">
+              {REPORT_RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`report-range-btn ${selectedRange === opt.value ? 'is-active' : ''}`}
+                  onClick={() => handleRangeChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="report-chart-panel">
+          <div className="report-chart-header">
+            <h3 className="report-chart-title">Daily Sales Trend</h3>
+            {comparison && (
+              <span className={`report-comparison-chip ${comparison.isUp ? 'up' : 'down'}`}>
+                {comparison.isUp ? '↑' : '↓'} {Math.abs(comparison.growthPercent || 0).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <div className="report-chart-box" ref={chartRef}>
+            <ModernReportChart
+              type="line"
+              data={chartData}
+              xKey="label"
+              valueKey="value"
+              title="Revenue Trend"
+              description="Smooth revenue movement with highlighted peak and low days"
+              colors={['#2563eb', '#1d4ed8']}
+              seriesLabel="Revenue"
+              valuePrefix="₹"
+              showArea
+              showPeakLow
+              animationDuration={800}
+            />
+            {showNoDataHint && (
+              <div className="report-chart-overlay">
+                <span className="report-chart-overlay__text">No sales recorded</span>
+              </div>
+            )}
           </div>
         </div>
 
