@@ -1,0 +1,736 @@
+/* =====================================================
+   ADMIN ADD PRODUCT - MODERN PROFESSIONAL DESIGN
+   Clean, Enterprise-Grade Form Layout
+   ===================================================== */
+
+/* COLOR PALETTE */
+:root {
+  /* Primary Colors */
+  --primary-dark: #0F172A;
+  --primary-blue: #2563EB;
+  --primary-blue-hover: #1D4ED8;
+  
+  /* Text Colors */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-placeholder: #94A3B8;
+  
+  /* Background Colors */
+  --bg-page: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-input: #FFFFFF;
+  --bg-input-hover: #F8FAFC;
+  --bg-input-focus: #FFFFFF;
+  
+  /* Border Colors */
+  --border-default: #E2E8F0;
+  --border-hover: #CBD5E1;
+  --border-focus: #2563EB;
+  
+  /* Status Colors */
+  --success: #10B981;
+  --error: #EF4444;
+  --warning: #F59E0B;
+  
+  /* Spec Colors */
+  --spec-required-bg: #FFF7ED;
+  --spec-required-border: #FB923C;
+  --spec-optional-bg: #F0F9FF;
+  --spec-optional-border: #3B82F6;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+}
+
+/* =====================================================
+   PAGE CONTAINER
+   ===================================================== */
+.admin-add-product-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 40px 32px;
+  background: var(--bg-page);
+  min-height: 100vh;
+}
+
+/* =====================================================
+   LOADING STATE
+   ===================================================== */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 24px;
+  text-align: center;
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.loading-state svg {
+  stroke: var(--primary-blue);
+}
+
+.loading-state p {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* =====================================================
+   PAGE HEADER
+   ===================================================== */
+.page-header {
+  margin-bottom: 36px;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.back-button:hover {
+  background: var(--bg-input-hover);
+  color: var(--text-primary);
+}
+
+.back-button svg {
+  transition: transform 0.2s ease;
+}
+
+.back-button:hover svg {
+  transform: translateX(-3px);
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* =====================================================
+   ALERT ERROR
+   ===================================================== */
+.alert-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  border-radius: 10px;
+  color: #991B1B;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-sm);
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 28px;
+}
+
+.alert-error svg {
+  flex-shrink: 0;
+  stroke: #DC2626;
+}
+
+/* =====================================================
+   FORM MODERN LAYOUT
+   ===================================================== */
+.product-form-modern {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* =====================================================
+   FORM CARDS
+   ===================================================== */
+.form-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.3s ease;
+}
+
+.form-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  padding: 26px 28px;
+  border-bottom: 1px solid var(--border-default);
+  background: linear-gradient(to bottom, #FFFFFF, #F8FAFC);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.01em;
+}
+
+.category-icon {
+  font-size: 20px;
+}
+
+.card-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+}
+
+.card-body {
+  padding: 32px;
+}
+
+/* =====================================================
+   INPUT GROUPS & LABELS
+   ===================================================== */
+.input-group {
+  margin-bottom: 28px;
+}
+
+.input-group:last-child {
+  margin-bottom: 0;
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.required {
+  color: var(--error);
+  font-weight: 700;
+}
+
+/* =====================================================
+   FORM INPUTS, SELECT, TEXTAREA
+   ===================================================== */
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 2px solid var(--border-default);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  height: 50px;
+}
+
+.form-textarea {
+  height: auto;
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-placeholder);
+  font-weight: 400;
+}
+
+.form-input:hover,
+.form-select:hover,
+.form-textarea:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-input-hover);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-input-focus);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.form-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 48px;
+  appearance: none;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* =====================================================
+   INPUT ROW (2 & 3 COLUMNS)
+   ===================================================== */
+.input-row-2,
+.input-row-3 {
+  margin-bottom: 0;
+}
+
+.input-row-2 .input-group,
+.input-row-3 .input-group {
+  margin-bottom: 0;
+}
+
+.input-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.input-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+
+.input-row-2 .input-group {
+  margin-bottom: 0;
+}
+
+/* =====================================================
+   UPLOAD AREA
+   ===================================================== */
+.upload-area {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.upload-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.upload-label {
+  display: block;
+  cursor: pointer;
+  border: 2px dashed var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-input);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  min-height: 320px;
+  margin: 0 auto;
+  max-width: 700px;
+}
+
+.upload-label:hover {
+  border-color: var(--border-focus);
+  background: var(--bg-input-hover);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  gap: 14px;
+}
+
+.upload-placeholder svg {
+  stroke: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.upload-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: block;
+  font-weight: 500;
+}
+
+/* Image Preview */
+.image-preview-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  gap: 10px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.image-preview-box:hover .preview-overlay {
+  opacity: 1;
+}
+
+.preview-overlay svg {
+  stroke: white;
+}
+
+/* =====================================================
+   SPECIFICATIONS GRID LAYOUT
+   ===================================================== */
+.specs-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* =====================================================
+   SPECIFICATIONS SECTIONS
+   ===================================================== */
+.spec-section {
+  padding: 24px;
+  border-radius: 12px;
+  border: 2px solid;
+  height: fit-content;
+}
+
+.spec-section.required {
+  background: var(--spec-required-bg);
+  border-color: var(--spec-required-border);
+}
+
+.spec-section.optional {
+  background: var(--spec-optional-bg);
+  border-color: var(--spec-optional-border);
+  border-style: dashed;
+}
+
+.spec-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.spec-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.required-badge {
+  background: #FFFFFF;
+  color: #EA580C;
+  border: 1.5px solid #FB923C;
+}
+
+.optional-badge {
+  background: #FFFFFF;
+  color: #2563EB;
+  border: 1.5px solid #3B82F6;
+}
+
+.spec-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.spec-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.spec-fields .input-group {
+  margin-bottom: 0;
+}
+
+/* No Specifications Message */
+.no-specs-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border-radius: 10px;
+  border: 2px dashed var(--border-default);
+}
+
+.no-specs-message svg {
+  stroke: var(--text-muted);
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.no-specs-message p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* =====================================================
+   FORM ACTIONS
+   ===================================================== */
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 24px 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.btn-cancel,
+.btn-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  min-width: 160px;
+  height: 54px;
+}
+
+.btn-cancel {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: var(--bg-input-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.btn-submit {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+  color: white;
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.25);
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #1E293B;
+  border-color: #1E293B;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.3);
+}
+
+.btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-cancel:disabled,
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* =====================================================
+   RESPONSIVE DESIGN
+   ===================================================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .admin-add-product-container {
+    padding: 24px 16px;
+  }
+
+  .product-form-modern {
+    max-width: 100%;
+  }
+
+  .input-row-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .specs-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .admin-add-product-container {
+    padding: 20px 12px;
+  }
+
+  .product-form-modern {
+    max-width: 100%;
+    gap: 20px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+  
+  .page-subtitle {
+    font-size: 14px;
+  }
+  
+  .card-header {
+    padding: 20px;
+  }
+  
+  .card-body {
+    padding: 20px;
+  }
+  
+  .input-row-2,
+  .input-row-3 {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .specs-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 12px;
+    padding: 20px;
+  }
+  
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .upload-label {
+    max-width: 100%;
+    min-height: 280px;
+  }
+}
+
+/* =====================================================
+   PRINT STYLES
+   ===================================================== */
+@media print {
+  .back-button,
+  .form-actions {
+    display: none;
+  }
+  
+  .form-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+}

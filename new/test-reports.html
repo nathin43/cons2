@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Stock & Customer Reports</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        .button-group {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border-left: 4px solid #10b981;
+        }
+        .error {
+            border-left-color: #ef4444;
+            background: #fee2e2;
+        }
+        .loading {
+            border-left-color: #f59e0b;
+            background: #fef3c7;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .token-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+        .summary-card {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .summary-card h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .summary-card p {
+            margin: 0;
+            font-size: 32px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Stock & Customer Reports API</h1>
+        
+        <div>
+            <label for="tokenInput"><strong>Admin Token:</strong></label>
+            <input type="text" id="tokenInput" class="token-input" placeholder="Paste your admin token here (from localStorage.getItem('adminToken'))">
+            <small>Open browser console and run: <code>localStorage.getItem('adminToken')</code></small>
+        </div>
+        
+        <div class="button-group">
+            <button onclick="testStockReport()">📦 Test Stock Report</button>
+            <button onclick="testCustomerReport()">👥 Test Customer Report</button>
+            <button onclick="testBothReports()">🔄 Test Both</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:50004/api';
+        
+        function getToken() {
+            return document.getElementById('tokenInput').value.trim();
+        }
+        
+        function showLoading(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div class="result loading">
+                    <h3>⏳ ${message}</h3>
+                </div>
+            `;
+        }
+        
+        function showError(title, error) {
+            const results = document.getElementById('results');
+            results.innerHTML += `
+                <div class="result error">
+                    <h3>❌ ${title}</h3>
+                    <p><strong>Error:</strong> ${error.message || error}</p>
+                    ${error.response ? `<p><strong>Status:</strong> ${error.response.status}</p>` : ''}
+                    ${error.response?.data ? `<pre>${JSON.stringify(error.response.data, null, 2)}</pre>` : ''}
+                </div>
+            `;
+        }
+        
+        function showSuccess(title, data) {
+            const results = document.getElementById('results');
+            let summaryHTML = '';
+            
+            if (data.summary) {
+                summaryHTML = '<div style="margin: 15px 0;">';
+                for (const [key, value] of Object.entries(data.summary)) {
+                    const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    summaryHTML += `
+                        <div class="summary-card">
+                            <h3>${displayKey}</h3>
+                            <p>${typeof value === 'number' && key.includes('Revenue') || key.includes('Amount') || key.includes('Value') ? '₹' + value.toFixed(2) : value}</p>
+                        </div>
+                    `;
+                }
+                summaryHTML += '</div>';
+            }
+            
+            results.innerHTML += `
+                <div class="result">
+                    <h3>✅ ${title}</h3>
+                    ${summaryHTML}
+                    <p><strong>Records Fetched:</strong> ${data.data?.length || 0}</p>
+                    <details>
+                        <summary><strong>View Full Response</strong></summary>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </details>
+                </div>
+            `;
+        }
+        
+        async function testStockReport() {
+            const token = getToken();
+            if (!token) {
+                alert('Please enter an admin token first!');
+                return;
+            }
+            
+            showLoading('Testing Stock Report API...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/reports/stock`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw { response: { status: response.status, data: errorData }, message: errorData.message || `HTTP ${response.status}` };
+                }
+                
+                const data = await response.json();
+                showSuccess('Stock Report Successful', data);
+            } catch (error) {
+                showError('Stock Report Failed', error);
+            }
+        }
+        
+        async function testCustomerReport() {
+            const token = getToken();
+            if (!token) {
+                alert('Please enter an admin token first!');
+                return;
+            }
+            
+            showLoading('Testing Customer Report API...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/reports/customers`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw { response: { status: response.status, data: errorData }, message: errorData.message || `HTTP ${response.status}` };
+                }
+                
+                const data = await response.json();
+                showSuccess('Customer Report Successful', data);
+            } catch (error) {
+                showError('Customer Report Failed', error);
+            }
+        }
+        
+        async function testBothReports() {
+            await testStockReport();
+            await testCustomerReport();
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-populate token from URL parameter if present
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            if (token) {
+                document.getElementById('tokenInput').value = token;
+            }
+        });
+    </script>
+</body>
+</html>

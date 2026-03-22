@@ -1,0 +1,685 @@
+﻿/* ================================================================
+   AdminLogin.css — Clean White Professional Admin Portal
+   Prefix: al-
+   Theme: Light White / Blue — Stripe / Vercel inspired
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/*  Page Shell  */
+.al-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 15% 10%,  rgba(147, 197, 253, 0.55) 0%, transparent 52%),
+    radial-gradient(ellipse at 85% 88%,  rgba(165, 180, 252, 0.5)  0%, transparent 50%),
+    radial-gradient(ellipse at 72% 18%,  rgba(186, 230, 253, 0.42) 0%, transparent 44%),
+    radial-gradient(ellipse at 28% 82%,  rgba(199, 210, 254, 0.38) 0%, transparent 44%),
+    linear-gradient(145deg, #dbeafe 0%, #e0e7ff 45%, #dde8ff 75%, #bae6fd 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow: hidden;
+  padding: 28px 20px;
+  animation: alPageIn 0.5s ease-out both;
+}
+
+@keyframes alPageIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/*  Animated Background  */
+.al-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.al-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(68px);
+  opacity: 0.9;
+}
+
+.al-orb--1 {
+  width: 820px;
+  height: 820px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.72) 0%, rgba(37, 99, 235, 0.38) 40%, rgba(59, 130, 246, 0.1) 65%, transparent 75%);
+  top: -340px;
+  right: -240px;
+  animation: alOrbit1 20s ease-in-out infinite;
+}
+
+.al-orb--2 {
+  width: 720px;
+  height: 720px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.68) 0%, rgba(109, 40, 217, 0.32) 40%, rgba(139, 92, 246, 0.1) 65%, transparent 75%);
+  bottom: -260px;
+  left: -220px;
+  animation: alOrbit2 24s ease-in-out infinite;
+}
+
+.al-orb--3 {
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.62) 0%, rgba(14, 165, 233, 0.28) 40%, rgba(56, 189, 248, 0.08) 65%, transparent 75%);
+  top: 45%;
+  left: 38%;
+  transform: translate(-50%, -50%);
+  animation: alOrbit3 17s ease-in-out infinite;
+}
+
+@keyframes alOrbit1 {
+  0%, 100% { transform: translate(0, 0) scale(1);    opacity: 0.9; }
+  25%       { transform: translate(-60px, 80px) scale(1.1); opacity: 1; }
+  50%       { transform: translate(20px, 50px) scale(0.97); opacity: 0.75; }
+  75%       { transform: translate(50px, -40px) scale(1.05); opacity: 1; }
+}
+
+@keyframes alOrbit2 {
+  0%, 100% { transform: translate(0, 0) scale(1);    opacity: 0.9; }
+  25%       { transform: translate(70px, -55px) scale(1.12); opacity: 1; }
+  50%       { transform: translate(30px, 20px) scale(0.95); opacity: 0.7; }
+  75%       { transform: translate(-50px, 40px) scale(1.08); opacity: 1; }
+}
+
+@keyframes alOrbit3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.85; }
+  33%       { transform: translate(-50%, -50%) scale(1.2);  opacity: 1; }
+  66%       { transform: translate(-50%, -50%) scale(0.88); opacity: 0.6; }
+}
+
+/* Dot-grid overlay */
+.al-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(37, 99, 235, 0.28) 2px, transparent 2px);
+  background-size: 36px 36px;
+  opacity: 1;
+  animation: alGridDrift 40s linear infinite;
+}
+
+@keyframes alGridDrift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 36px 36px; }
+}
+
+/*  Floating Particles  */
+.al-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.al-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.7);
+  box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.5), 0 0 24px rgba(59, 130, 246, 0.25);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.al-particle--1  { width: 7px;  height: 7px;  left: 5%;  animation: alFloat 14s infinite; animation-delay: 0s; }
+.al-particle--2  { width: 9px;  height: 9px;  left: 12%; animation: alFloat 18s infinite; animation-delay: 1.5s;  background: rgba(139,92,246,0.75); box-shadow: 0 0 14px 4px rgba(139,92,246,0.5), 0 0 28px rgba(139,92,246,0.25); }
+.al-particle--3  { width: 5px;  height: 5px;  left: 20%; animation: alFloat 12s infinite; animation-delay: 3s; }
+.al-particle--4  { width: 11px; height: 11px; left: 30%; animation: alFloat 16s infinite; animation-delay: 0.7s;  background: rgba(56,189,248,0.75); box-shadow: 0 0 14px 4px rgba(56,189,248,0.55), 0 0 30px rgba(56,189,248,0.28); }
+.al-particle--5  { width: 7px;  height: 7px;  left: 40%; animation: alFloat 15s infinite; animation-delay: 2s; }
+.al-particle--6  { width: 9px;  height: 9px;  left: 50%; animation: alFloat 20s infinite; animation-delay: 4s;   background: rgba(139,92,246,0.7); box-shadow: 0 0 14px 4px rgba(139,92,246,0.48), 0 0 28px rgba(139,92,246,0.22); }
+.al-particle--7  { width: 5px;  height: 5px;  left: 60%; animation: alFloat 13s infinite; animation-delay: 1s; }
+.al-particle--8  { width: 11px; height: 11px; left: 70%; animation: alFloat 17s infinite; animation-delay: 2.5s;  background: rgba(56,189,248,0.72); box-shadow: 0 0 14px 4px rgba(56,189,248,0.52), 0 0 28px rgba(56,189,248,0.26); }
+.al-particle--9  { width: 7px;  height: 7px;  left: 78%; animation: alFloat 14s infinite; animation-delay: 3.5s; }
+.al-particle--10 { width: 9px;  height: 9px;  left: 85%; animation: alFloat 19s infinite; animation-delay: 0.3s;  background: rgba(139,92,246,0.75); box-shadow: 0 0 14px 4px rgba(139,92,246,0.5), 0 0 28px rgba(139,92,246,0.25); }
+.al-particle--11 { width: 5px;  height: 5px;  left: 92%; animation: alFloat 11s infinite; animation-delay: 1.8s; }
+.al-particle--12 { width: 9px;  height: 9px;  left: 17%; animation: alFloat 22s infinite; animation-delay: 5s;   background: rgba(56,189,248,0.7); box-shadow: 0 0 14px 4px rgba(56,189,248,0.5), 0 0 28px rgba(56,189,248,0.24); }
+.al-particle--13 { width: 6px;  height: 6px;  left: 33%; animation: alFloat 16s infinite; animation-delay: 2.2s; }
+.al-particle--14 { width: 11px; height: 11px; left: 55%; animation: alFloat 13s infinite; animation-delay: 3.8s; }
+.al-particle--15 { width: 7px;  height: 7px;  left: 65%; animation: alFloat 18s infinite; animation-delay: 0.9s; }
+.al-particle--16 { width: 9px;  height: 9px;  left: 75%; animation: alFloat 15s infinite; animation-delay: 4.5s;  background: rgba(139,92,246,0.72); box-shadow: 0 0 14px 4px rgba(139,92,246,0.5), 0 0 28px rgba(139,92,246,0.24); }
+.al-particle--17 { width: 5px;  height: 5px;  left: 88%; animation: alFloat 17s infinite; animation-delay: 1.2s; }
+.al-particle--18 { width: 9px;  height: 9px;  left: 45%; animation: alFloat 21s infinite; animation-delay: 6s;   background: rgba(56,189,248,0.74); box-shadow: 0 0 14px 4px rgba(56,189,248,0.54), 0 0 28px rgba(56,189,248,0.28); }
+
+@keyframes alFloat {
+  0%   { bottom: -5%;   opacity: 0;   transform: translateX(0)     scale(0.2); }
+  6%   {               opacity: 1;   transform: translateX(12px)  scale(1); }
+  30%  {               opacity: 1;   transform: translateX(-18px) scale(1.1); }
+  55%  {               opacity: 0.9; transform: translateX(14px)  scale(1); }
+  80%  {               opacity: 0.8; transform: translateX(-10px) scale(0.95); }
+  94%  {               opacity: 0.4; transform: translateX(6px)   scale(0.8); }
+  100% { bottom: 108%; opacity: 0;   transform: translateX(0)     scale(0.2); }
+}
+
+/*  Main Container  */
+.al-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 448px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: alContainerIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@keyframes alContainerIn {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*  Brand Header  */
+.al-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: alFadeDown 0.6s ease-out 0.15s both;
+}
+
+@keyframes alFadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.al-brand__bolt {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+  flex-shrink: 0;
+}
+
+.al-brand__bolt svg {
+  width: 20px;
+  height: 20px;
+  color: #fff;
+}
+
+.al-brand__name {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+
+/*  Login Card  */
+.al-card {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    0 16px 48px rgba(15, 23, 42, 0.16),
+    0 32px 80px rgba(37, 99, 235, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  animation: alCardIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  transition: box-shadow 0.38s ease, transform 0.38s ease;
+}
+
+.al-card:hover {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 20px rgba(15, 23, 42, 0.1),
+    0 24px 64px rgba(15, 23, 42, 0.2),
+    0 44px 88px rgba(37, 99, 235, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 1),
+    0 0 80px rgba(37, 99, 235, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-5px);
+}
+
+@keyframes alCardIn {
+  from { opacity: 0; transform: translateY(26px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Animated top accent bar */
+.al-card__glow-bar {
+  height: 4px;
+  background: linear-gradient(90deg,
+    #1d4ed8 0%, #2563eb 25%, #60a5fa 50%, #2563eb 75%, #1d4ed8 100%);
+  background-size: 200% 100%;
+  animation: alGlowSlide 3.5s linear infinite;
+}
+
+@keyframes alGlowSlide {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Card body */
+.al-card__body {
+  padding: 38px 38px 0;
+}
+
+/*  Shield Icon  */
+.al-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 24px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow:
+    0 0 0 10px rgba(37, 99, 235, 0.07),
+    0 10px 32px rgba(37, 99, 235, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  animation: alIconFloat 4s ease-in-out infinite;
+}
+
+.al-icon svg {
+  width: 34px;
+  height: 34px;
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
+}
+
+.al-icon__ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 28px;
+  border: 1.5px solid rgba(37, 99, 235, 0.22);
+  animation: alRingPulse 3s ease-in-out infinite;
+}
+
+@keyframes alRingPulse {
+  0%, 100% { opacity: 0.22; transform: scale(1); }
+  50%       { opacity: 0.6;  transform: scale(1.05); }
+}
+
+@keyframes alIconFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+
+/*  Title & Subtitle  */
+.al-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: center;
+  margin: 0 0 8px;
+  letter-spacing: -0.6px;
+  animation: alFadeUp 0.6s ease-out 0.4s both;
+}
+
+.al-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  text-align: center;
+  margin: 0 0 28px;
+  animation: alFadeUp 0.6s ease-out 0.5s both;
+}
+
+@keyframes alFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*  Error Banner  */
+.al-error {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-bottom: 18px;
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  animation: alSlideIn 0.3s ease;
+}
+
+@keyframes alSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*  Form  */
+.al-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: alFadeUp 0.6s ease-out 0.55s both;
+}
+
+/*  Field  */
+.al-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.al-field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.1px;
+}
+
+.al-field__wrap {
+  position: relative;
+}
+
+.al-field__icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 17px;
+  height: 17px;
+  color: #94a3b8;
+  pointer-events: none;
+  transition: color 0.22s ease;
+  display: flex;
+  align-items: center;
+}
+
+.al-field__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.al-field__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 16px 13px 46px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 11px;
+  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: #0f172a;
+  transition: all 0.22s ease;
+  outline: none;
+}
+
+.al-field__input::placeholder {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.al-field__input:hover {
+  border-color: #c7d2e0;
+  background: #f4f6fa;
+}
+
+.al-field__input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1), 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+.al-field__wrap:focus-within .al-field__icon {
+  color: #2563eb;
+}
+
+/* Eye toggle */
+.al-field__eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.al-field__eye svg {
+  width: 17px;
+  height: 17px;
+}
+
+.al-field__eye:hover {
+  background: #f1f5f9;
+  color: #2563eb;
+}
+
+/*  Login Button  */
+.al-btn {
+  width: 100%;
+  padding: 15px 16px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 11px;
+  font-size: 15.5px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  letter-spacing: 0.15px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.22s ease;
+  box-shadow:
+    0 1px 3px rgba(37, 99, 235, 0.2),
+    0 4px 16px rgba(37, 99, 235, 0.4),
+    0 0 0 0 rgba(37, 99, 235, 0);
+}
+
+.al-btn svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+/* Shimmer sweep */
+.al-btn__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: alShimmer 2.8s ease-in-out infinite;
+}
+
+@keyframes alShimmer {
+  0%, 100% { transform: translateX(-100%); }
+  50%       { transform: translateX(100%); }
+}
+
+.al-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow:
+    0 2px 6px rgba(37, 99, 235, 0.25),
+    0 8px 28px rgba(37, 99, 235, 0.5),
+    0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.al-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+}
+
+.al-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Spinner */
+.al-btn__spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: alSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes alSpin {
+  to { transform: rotate(360deg); }
+}
+
+/*  Card Footer  */
+.al-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 38px 28px;
+  margin-top: 22px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.al-back {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.2s ease;
+}
+
+.al-back::before {
+  content: '';
+  font-size: 15px;
+}
+
+.al-back:hover {
+  color: #2563eb;
+}
+
+.al-secure {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.al-secure::before {
+  content: '';
+  font-size: 11px;
+}
+
+/*  Copyright  */
+.al-copyright {
+  font-size: 12.5px;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0;
+  font-weight: 400;
+}
+
+/*  Responsive  */
+@media (max-width: 480px) {
+  .al-page {
+    padding: 20px 14px;
+    align-items: flex-start;
+    padding-top: 36px;
+  }
+
+  .al-container {
+    gap: 16px;
+  }
+
+  .al-brand__name {
+    font-size: 17px;
+  }
+
+  .al-card__body {
+    padding: 28px 24px 0;
+  }
+
+  .al-card__footer {
+    padding: 18px 24px 24px;
+  }
+
+  .al-icon {
+    width: 62px;
+    height: 62px;
+    border-radius: 17px;
+  }
+
+  .al-icon svg {
+    width: 29px;
+    height: 29px;
+  }
+
+  .al-title {
+    font-size: 22px;
+  }
+
+  .al-subtitle {
+    font-size: 13px;
+  }
+
+  .al-field__input {
+    font-size: 16px; /* Prevents iOS zoom */
+    padding: 13px 16px 13px 44px;
+  }
+
+  .al-btn {
+    font-size: 15px;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .al-card__body {
+    padding: 24px 18px 0;
+  }
+
+  .al-card__footer {
+    padding: 16px 18px 20px;
+  }
+
+  .al-title {
+    font-size: 20px;
+  }
+}
+
+/*  Reduced motion  */
+@media (prefers-reduced-motion: reduce) {
+  .al-orb,
+  .al-particle,
+  .al-icon,
+  .al-icon__ring,
+  .al-btn__shimmer,
+  .al-card__glow-bar {
+    animation: none !important;
+    transition: none !important;
+  }
+}

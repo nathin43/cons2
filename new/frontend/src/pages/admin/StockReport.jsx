@@ -1,0 +1,414 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/AdminLayout';
+import DashboardSkeleton from '../../components/DashboardSkeleton';
+import useAdminLoader from '../../hooks/useAdminLoader';
+import useToast from '../../hooks/useToast';
+import api from '../../services/api';
+import './ReportStyles.css';
+import { addShopHeader, addPageNumbers, loadUnicodeFonts, pdfRupee } from '../../utils/pdfUtils';
+
+const StockReport = () => {
+  const navigate = useNavigate();
+  const { success, error } = useToast();
+  
+  const { loading, run } = useAdminLoader();
+  const [exporting, setExporting] = useState(false);
+  const [stockData, setStockData] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    category: '',
+    brand: '',
+    stockStatus: ''
+  });
+  const [analytics, setAnalytics] = useState({
+    totalProducts: 0,
+    inStock: 0,
+    lowStock: 0,
+    outOfStock: 0
+  });
+
+  useEffect(() => {
+    run(fetchStockData);
+  }, []);
+
+  const fetchStockData = async () => {
+    // loading managed by useAdminLoader's run()
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      if (!adminToken) {
+        navigate('/admin/login');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.brand) params.append('brand', filters.brand);
+      if (filters.stockStatus) params.append('stockStatus', filters.stockStatus);
+
+      const queryString = params.toString();
+      const endpoint = queryString ? `/admin/reports/stock?${queryString}` : '/admin/reports/stock';
+
+      console.log('📦 Fetching stock report from:', endpoint);
+      const response = await api.get(endpoint);
+      
+      if (!response.data || typeof response.data !== 'object') {
+        throw new Error('Invalid response format from server');
+      }
+
+      if (response.data.success) {
+        const reportData = response.data.data || [];
+        const summary = response.data.summary || {};
+        
+        setStockData(reportData);
+        
+        // Use summary data from API
+        setAnalytics({
+          totalProducts: summary.totalProducts || 0,
+          inStock: summary.inStock || 0,
+          lowStock: summary.lowStock || 0,
+          outOfStock: summary.outOfStock || 0
+        });
+        
+        console.log(`✅ Successfully fetched ${reportData.length} products`);
+        console.log('📈 Summary:', summary);
+      }
+    } catch (err) {
+      console.error('❌ Stock Report Error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        endpoint: '/admin/reports/stock'
+      });
+      
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        error('Authentication failed. Please login again.');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('admin');
+        navigate('/admin/login');
+      } else if (err.response?.status === 500) {
+        error('Server error. Please try again later.');
+      } else {
+        error(err.response?.data?.message || 'Failed to fetch stock data');
+      }
+    } finally {
+      // loading managed by run()
+    }
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    run(fetchStockData);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      search: '',
+      category: '',
+      brand: '',
+      stockStatus: ''
+    });
+  };
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+      
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Load Unicode font for ₹ symbol
+      const PDF_FONT = await loadUnicodeFonts(doc);
+
+      let yPos = addShopHeader(doc, 'STOCK REPORT', [16, 185, 129]);
+
+      // Reset text style for content
+      doc.setFont(PDF_FONT, 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+
+      
+      if (filters.search || filters.category || filters.brand || filters.stockStatus) {
+        doc.text('Filters Applied:', 14, yPos);
+        yPos += 5;
+        if (filters.search) doc.text(`  • Search: ${filters.search}`, 14, yPos), yPos += 5;
+        if (filters.category) doc.text(`  • Category: ${filters.category}`, 14, yPos), yPos += 5;
+        if (filters.brand) doc.text(`  • Brand: ${filters.brand}`, 14, yPos), yPos += 5;
+        if (filters.stockStatus) doc.text(`  • Status: ${filters.stockStatus}`, 14, yPos), yPos += 5;
+        yPos += 5;
+      }
+      
+      // Analytics Summary
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(16, 185, 129);
+      doc.text('Inventory Summary', 14, yPos);
+      doc.setFont(PDF_FONT, 'normal');
+      doc.setTextColor(60, 60, 60);
+      yPos += 8;
+      
+      doc.setFontSize(10);
+      const summaryData = [
+        ['Total Products', analytics.totalProducts.toString()],
+        ['In Stock', analytics.inStock.toString()],
+        ['Low Stock', analytics.lowStock.toString()],
+        ['Out of Stock', analytics.outOfStock.toString()]
+      ];
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        theme: 'grid',
+        headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+        styles: { font: PDF_FONT },
+        margin: { left: 14, right: 14 }
+      });
+      
+      yPos = doc.lastAutoTable.finalY + 10;
+      
+      // Detailed Stock Data
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(16, 185, 129);
+      doc.text('Detailed Stock Data', 14, yPos);
+      doc.setFont(PDF_FONT, 'normal');
+      doc.setTextColor(60, 60, 60);
+      yPos += 8;
+      
+      const tableData = stockData.map(product => [
+        product.name,
+        product.category || 'N/A',
+        pdfRupee(product.price),
+        product.stock.toString(),
+        pdfRupee(product.stockValue || (product.price * product.stock) || 0),
+        product.stock > 10 ? 'In Stock' : product.stock > 0 ? 'Low Stock' : 'Out of Stock',
+        product.createdAt ? new Date(product.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Product Name', 'Category', 'Price', 'Stock Qty', 'Stock Value', 'Status', 'Date Added']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+        styles: { font: PDF_FONT, fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+      
+      // Save PDF
+      addPageNumbers(doc, [16, 185, 129]);
+      const fileName = `stock-report_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      success('Stock report exported as PDF successfully');
+    } catch (err) {
+      error('Failed to export PDF');
+      console.error('PDF export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const formatCurrency = (amount) => `₹${Number(amount || 0).toLocaleString('en-IN')}`;
+
+  const getStockStatus = (stock) => {
+    if (stock > 10) return { status: 'In Stock', class: 'in-stock' };
+    if (stock > 0) return { status: 'Low Stock', class: 'low-stock' };
+    return { status: 'Out of Stock', class: 'out-of-stock' };
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <DashboardSkeleton title="Loading Stock Report" />
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <div className="admin-report-page">
+        {/* Header */}
+        <div className="report-page-header">
+          <button className="btn-back" onClick={() => navigate('/admin/reports')}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Back to Reports
+          </button>
+          <div className="header-content">
+            <div className="header-left">
+              <div className="header-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+                📦
+              </div>
+              <div>
+                <h1>Stock Report</h1>
+                <p className="subtitle">Monitor inventory levels and stock movements</p>
+              </div>
+            </div>
+            <div className="header-actions">
+              <button className="btn-toggle-filters" onClick={() => setShowFilters(!showFilters)}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M2 4h14M5 9h8M7 14h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+              <button className="btn-export" onClick={handleExportPDF} disabled={exporting}>
+                {exporting ? 'Generating PDF...' : 'Export PDF'}
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M13 9v2a2 2 0 01-2 2H3a2 2 0 01-2-2V9M7 10V2M4 5l3-3 3 3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Analytics Summary */}
+        <div className="analytics-summary">
+          <div className="analytics-card">
+            <div className="analytics-icon" style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)' }}>
+              📊
+            </div>
+            <div className="analytics-content">
+              <p className="analytics-label">Total Products</p>
+              <h3 className="analytics-value">{analytics.totalProducts}</h3>
+            </div>
+          </div>
+          <div className="analytics-card">
+            <div className="analytics-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+              ✅
+            </div>
+            <div className="analytics-content">
+              <p className="analytics-label">In Stock</p>
+              <h3 className="analytics-value">{analytics.inStock}</h3>
+            </div>
+          </div>
+          <div className="analytics-card">
+            <div className="analytics-icon" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}>
+              ⚠️
+            </div>
+            <div className="analytics-content">
+              <p className="analytics-label">Low Stock</p>
+              <h3 className="analytics-value">{analytics.lowStock}</h3>
+            </div>
+          </div>
+          <div className="analytics-card">
+            <div className="analytics-icon" style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)' }}>
+              ❌
+            </div>
+            <div className="analytics-content">
+              <p className="analytics-label">Out of Stock</p>
+              <h3 className="analytics-value">{analytics.outOfStock}</h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="filters-panel">
+            <div className="filters-grid">
+              <div className="filter-item">
+                <label>Search Product</label>
+                <input 
+                  type="text"
+                  name="search"
+                  value={filters.search}
+                  onChange={handleFilterChange}
+                  placeholder="Product name..."
+                />
+              </div>
+              <div className="filter-item">
+                <label>Category</label>
+                <input 
+                  type="text"
+                  name="category"
+                  value={filters.category}
+                  onChange={handleFilterChange}
+                  placeholder="Category..."
+                />
+              </div>
+              <div className="filter-item">
+                <label>Brand</label>
+                <input 
+                  type="text"
+                  name="brand"
+                  value={filters.brand}
+                  onChange={handleFilterChange}
+                  placeholder="Brand..."
+                />
+              </div>
+            </div>
+            <div className="filter-actions">
+              <button className="btn-apply" onClick={handleApplyFilters}>Apply Filters</button>
+              <button className="btn-clear" onClick={handleClearFilters}>Clear All</button>
+            </div>
+          </div>
+        )}
+
+        {/* Stock Data Table */}
+        <div className="report-table-container">
+          <div className="table-info">
+            <p>Showing {stockData.length} products</p>
+          </div>
+
+          {stockData.length > 0 ? (
+            <div className="table-wrapper">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Brand</th>
+                    <th>Price</th>
+                    <th>Stock Quantity</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockData.map((product) => {
+                    const stockStatus = getStockStatus(product.stock);
+                    return (
+                      <tr key={product._id}>
+                        <td>{product.name}</td>
+                        <td>{product.category}</td>
+                        <td>{product.brand}</td>
+                        <td className="amount">{formatCurrency(product.price)}</td>
+                        <td className="text-center" style={{ fontWeight: 600 }}>{product.stock}</td>
+                        <td>
+                          <span className={`status-badge ${stockStatus.class}`}>
+                            {stockStatus.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                <circle cx="32" cy="32" r="30" fill="#f3f4f6"/>
+                <path d="M32 20v16M32 44h.01" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+              <h3>No stock data found</h3>
+              <p>Try adjusting your filters</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default StockReport;

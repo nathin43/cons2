@@ -1,0 +1,190 @@
+/* Notification Filter Bar Styles */
+
+.notification-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+/* Filter Group */
+.notification-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notification-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #9ca3af;
+  letter-spacing: 0.5px;
+  padding: 0 4px;
+}
+
+/* Filter Buttons Container */
+.notification-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Filter Button */
+.notification-filter-btn {
+  padding: 6px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex: 0 1 auto;
+  min-width: fit-content;
+}
+
+.notification-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Active Status Filter Button */
+.notification-filter-btn.status-btn.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-color: #1d4ed8;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.notification-filter-btn.status-btn.active:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: #1e40af;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Status Filter Buttons - Different colors for each status */
+.notification-filter-btn.status-btn[data-status="unread"]:active,
+.notification-filter-btn.status-btn[data-status="unread"]:focus {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border-color: #4338ca;
+  color: white;
+}
+
+.notification-filter-btn.status-btn[data-status="read"]:active,
+.notification-filter-btn.status-btn[data-status="read"]:focus {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #6d28d9;
+  color: white;
+}
+
+/* Active Type Filter Button */
+.notification-filter-btn.type-btn.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-color: #047857;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.notification-filter-btn.type-btn.active:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #065f46;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Type Filter Button Info */
+.notification-filter-btn.type-btn:nth-child(2):active,
+.notification-filter-btn.type-btn:nth-child(2):focus {
+  /* Orders - Blue */
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #1d4ed8;
+  color: white;
+}
+
+.notification-filter-btn.type-btn:nth-child(3):active,
+.notification-filter-btn.type-btn:nth-child(3):focus {
+  /* Refunds - Yellow */
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #b45309;
+  color: white;
+}
+
+.notification-filter-btn.type-btn:nth-child(4):active,
+.notification-filter-btn.type-btn:nth-child(4):focus {
+  /* Customers - Purple */
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #6d28d9;
+  color: white;
+}
+
+.notification-filter-btn.type-btn:nth-child(5):active,
+.notification-filter-btn.type-btn:nth-child(5):focus {
+  /* Messages - Cyan */
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  border-color: #0369a1;
+  color: white;
+}
+
+.notification-filter-btn.type-btn:nth-child(6):active,
+.notification-filter-btn.type-btn:nth-child(6):focus {
+  /* Stock Alerts - Red */
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-color: #b91c1c;
+  color: white;
+}
+
+/* Reset Filters */
+.notification-filter-reset {
+  padding: 0 4px;
+}
+
+.notification-filter-reset-btn {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ef4444;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.notification-filter-reset-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #dc2626;
+}
+
+.notification-filter-reset-btn:active {
+  background: rgba(239, 68, 68, 0.15);
+  transform: scale(0.98);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .notification-filter-bar {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .notification-filter-buttons {
+    gap: 4px;
+  }
+
+  .notification-filter-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}

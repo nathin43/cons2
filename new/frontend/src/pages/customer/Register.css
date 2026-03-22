@@ -1,0 +1,242 @@
+/* =============================================================
+   REGISTER PAGE — Input field alignment & consistency fixes
+   All rules scoped under .auth-card--register so Login is untouched
+   ============================================================= */
+
+/* ── Standardised input inside icon wrapper ────────────────── */
+.auth-card--register .auth-field input {
+  height: 48px;
+  padding: 0 14px;               /* base padding (overridden below for icon fields) */
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  font-size: 14px;
+  color: #111827;
+  background: #ffffff;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  line-height: 1;                /* prevent line-height from stretching the box */
+}
+
+/* ── Icon-wrapper inputs: padding-left leaves room for the icon ─ */
+.auth-card--register .input-icon-wrapper input {
+  padding-left: 40px;
+  padding-right: 14px;
+}
+
+/* ── Eye-button inputs: also need right room ──────────────────── */
+.auth-card--register .input-icon-wrapper.has-eye input {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+/* ── Hover state ──────────────────────────────────────────────── */
+.auth-card--register .auth-field input:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: #fafafa;
+}
+
+/* ── Focus state ──────────────────────────────────────────────── */
+.auth-card--register .auth-field input:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Error state ──────────────────────────────────────────────── */
+.auth-card--register .auth-field input.input-error {
+  border-color: #f87171;
+  background: #fff5f5;
+}
+
+.auth-card--register .auth-field input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+}
+
+/* ── Placeholder ──────────────────────────────────────────────── */
+.auth-card--register .auth-field input::placeholder {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* ── Input icon: perfectly centred, consistent left offset ────── */
+.auth-card--register .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  transition: color 0.25s ease;
+  z-index: 1;
+}
+
+.auth-card--register .input-icon-wrapper:focus-within .input-icon {
+  color: #6366f1;
+}
+
+/* ── Input wrapper: no scale in register (keeps columns level) ── */
+.auth-card--register .input-icon-wrapper {
+  position: relative;
+}
+
+.auth-card--register .input-icon-wrapper:focus-within {
+  transform: none;              /* override Login.css scale(1.01) that shifts alignment */
+}
+
+/* ── Eye button: fixed to right edge, always centred ──────────── */
+.auth-card--register .input-eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+  z-index: 2;
+}
+
+.auth-card--register .input-eye-btn:hover {
+  color: #6366f1;
+}
+
+/* ── Phone prefix wrapper: match input height & border exactly ── */
+.auth-card--register .phone-prefix-wrapper {
+  height: 48px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: #ffffff;
+  transition: all 0.25s ease;
+}
+
+.auth-card--register .phone-prefix-wrapper:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: #fafafa;
+}
+
+.auth-card--register .phone-prefix-wrapper:focus-within {
+  border-color: #6366f1;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.auth-card--register .phone-prefix-wrapper--error {
+  border-color: #f87171;
+  background: #fff5f5;
+}
+
+.auth-card--register .phone-prefix-wrapper--error:focus-within {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+}
+
+.auth-card--register .phone-prefix {
+  height: 100%;
+  padding: 0 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  background: #f3f4f6;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+}
+
+.auth-card--register .phone-prefix-wrapper input {
+  height: 100%;
+  font-size: 14px;
+  padding: 0 12px;
+  color: #111827;
+}
+
+/* ── Form grid: enforce consistent gap ────────────────────────── */
+.auth-card--register .auth-form {
+  gap: 12px;
+}
+
+.auth-card--register .form-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* ── Confirm password row spans full width ────────────────────── */
+.auth-card--register .auth-field--full {
+  grid-column: 1 / -1;
+}
+
+/* ── Create Account button ───────────────────────────────────── */
+.auth-card--register .auth-btn-primary {
+  position: relative;
+  overflow: hidden;
+  height: 52px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  transition: all 0.35s ease;
+  margin-top: 8px;
+}
+
+/* Shine sweep — thin white gradient moving left → right */
+.auth-card--register .auth-btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.40) 50%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  animation: regBtnShine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes regBtnShine {
+  0%        { left: -80%; opacity: 1; }
+  45%, 100% { left: 135%; opacity: 0; }
+}
+
+/* Hover: lift + brighter gradient + stronger cyan glow */
+.auth-card--register .auth-btn-primary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  background: linear-gradient(135deg, #4338ca 0%, #0891b2 100%);
+  box-shadow: 0 14px 35px rgba(6, 182, 212, 0.45);
+}
+
+/* Click: press down */
+.auth-card--register .auth-btn-primary:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* Disabled / loading state */
+.auth-card--register .auth-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Spinner: size up to match button height */
+.auth-card--register .btn-spinner {
+  width: 17px;
+  height: 17px;
+  border-width: 2.5px;
+}

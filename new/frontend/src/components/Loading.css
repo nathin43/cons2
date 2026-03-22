@@ -1,0 +1,361 @@
+/* ===============================================
+   DASHBOARD LOADING SCREEN
+   Water Bubble Animation with Glassmorphism Card
+   =============================================== */
+
+/* Main Wrapper - Content Area Only (Not Full Screen) */
+.dashboard-loading-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 180px);
+  padding: 2rem;
+  margin: 20px;
+  border-radius: 16px;
+  overflow: hidden;
+  opacity: 0;
+  animation: wrapperFadeIn 0.6s ease-out forwards;
+}
+
+.dashboard-loading-wrapper.mounted {
+  opacity: 1;
+}
+
+@keyframes wrapperFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ===============================================
+   SOFT PURPLE-BLUE GRADIENT BACKGROUND
+   =============================================== */
+
+.dashboard-loading-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg, 
+    #e0c3fc 0%,
+    #8ec5fc 50%,
+    #b8d4ff 100%
+  );
+  animation: gradientShift 8s ease-in-out infinite;
+  background-size: 200% 200%;
+  z-index: 0;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ===============================================
+   CENTERED GLASS CARD
+   =============================================== */
+
+.dashboard-glass-card {
+  position: relative;
+  z-index: 10;
+  width: 450px;
+  max-width: 90vw;
+  height: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 32px; /* rounded-3xl equivalent */
+  padding: 3rem 2.5rem;
+  box-shadow: 
+    0 0 60px rgba(139, 92, 246, 0.25),
+    0 25px 50px -12px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  animation: cardFloatIn 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transform: translateY(30px);
+  opacity: 0;
+}
+
+@keyframes cardFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===============================================
+   WATER BUBBLES - RISING ANIMATION
+   =============================================== */
+
+.water-bubbles-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.water-bubble {
+  position: absolute;
+  bottom: -50px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(96, 165, 250, 0.6) 0%,
+    rgba(59, 130, 246, 0.4) 50%,
+    rgba(147, 197, 253, 0.5) 100%
+  );
+  filter: blur(2px);
+  animation: bubbleRise infinite ease-in;
+  will-change: transform, opacity;
+}
+
+/* Bubble Glow Effect */
+.bubble-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.6) 0%,
+    transparent 60%
+  );
+  box-shadow: 
+    0 0 20px rgba(96, 165, 250, 0.5),
+    inset -2px -2px 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Rising Water Bubble Keyframes */
+@keyframes bubbleRise {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-250px) translateX(calc(var(--drift, 0) * 1px)) scale(1.1);
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-550px) translateX(calc(var(--drift, 20) * 1px)) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* Add horizontal drift variations */
+.water-bubble:nth-child(odd) {
+  --drift: 15;
+}
+
+.water-bubble:nth-child(even) {
+  --drift: -18;
+}
+
+.water-bubble:nth-child(3n) {
+  --drift: 25;
+}
+
+/* ===============================================
+   LOADING TEXT CONTENT
+   =============================================== */
+
+.dashboard-loading-content {
+  position: relative;
+  z-index: 5;
+  text-align: center;
+  animation: contentFadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s backwards;
+}
+
+@keyframes contentFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading Title with Gradient Text */
+.dashboard-loading-title {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(
+    135deg,
+    #3b82f6 0%,
+    #6366f1 50%,
+    #8b5cf6 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
+  animation: titlePulse 3s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* Animated Ellipsis Dots */
+.ellipsis-dots {
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  -webkit-text-fill-color: #6366f1;
+  animation: dotsFlicker 1.5s steps(4, end) infinite;
+}
+
+@keyframes dotsFlicker {
+  0%, 20% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.5;
+  }
+  60%, 100% {
+    opacity: 1;
+  }
+}
+
+/* Subtitle Text */
+.dashboard-loading-subtitle {
+  font-size: 1.05rem;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8);
+  animation: subtitleFadeIn 1s ease-out 0.6s backwards;
+}
+
+@keyframes subtitleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===============================================
+   RESPONSIVE DESIGN
+   =============================================== */
+
+@media (max-width: 768px) {
+  .dashboard-loading-wrapper {
+    padding: 1.5rem;
+    margin: 15px;
+    min-height: calc(100vh - 160px);
+  }
+
+  .dashboard-glass-card {
+    width: 380px;
+    height: 460px;
+    padding: 2.5rem 2rem;
+    border-radius: 28px;
+  }
+
+  .dashboard-loading-title {
+    font-size: 1.75rem;
+  }
+
+  .dashboard-loading-subtitle {
+    font-size: 0.975rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-loading-wrapper {
+    padding: 1rem;
+    margin: 10px;
+    min-height: calc(100vh - 140px);
+  }
+
+  .dashboard-glass-card {
+    width: 320px;
+    height: 420px;
+    padding: 2rem 1.5rem;
+    border-radius: 24px;
+  }
+
+  .dashboard-loading-title {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-loading-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+/* ===============================================
+   FADE OUT TRANSITION
+   =============================================== */
+
+.dashboard-loading-wrapper.fade-out {
+  animation: wrapperFadeOut 0.5s ease-in forwards;
+}
+
+@keyframes wrapperFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* ===============================================
+   PERFORMANCE OPTIMIZATIONS
+   =============================================== */
+
+.water-bubble {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.dashboard-glass-card {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
