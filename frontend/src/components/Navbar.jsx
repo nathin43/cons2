@@ -43,7 +43,7 @@ const Navbar = () => {
     <nav className="navbar">
       {/* TOP HEADER - Main Navbar */}
       <div className="navbar-top">
-        <div className="navbar-inner">
+        <div className="layout-container navbar-inner">
           {/* LEFT - Logo */}
           <div className="nav-left">
             <Link to="/" className="navbar-brand">

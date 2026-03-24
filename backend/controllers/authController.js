@@ -3,6 +3,27 @@ const Admin = require('../models/Admin');
 const generateToken = require('../utils/generateToken');
 const NotificationService = require('../services/notificationService');
 
+const normalizePhone = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return raw;
+
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+
+  let local = digits;
+  if (local.startsWith('91')) {
+    local = local.slice(2);
+  }
+  if (local.length > 10) {
+    local = local.slice(-10);
+  }
+
+  if (local.length === 10) return `+91${local}`;
+  return raw;
+};
+
+const isValidIndianPhone = (value) => /^\+91\d{10}$/.test(String(value || ''));
+
 /**
  * Customer Register
  * @route POST /api/auth/register
@@ -29,12 +50,20 @@ exports.register = async (req, res) => {
       });
     }
 
+    const normalizedPhone = normalizePhone(phone);
+    if (!isValidIndianPhone(normalizedPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number must be in +91XXXXXXXXXX format'
+      });
+    }
+
     // Create new user
     const user = new User({
       name,
       email,
       password,
-      phone
+      phone: normalizedPhone
     });
 
     // Save user (password will be hashed by pre-save middleware)
@@ -85,22 +114,22 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const invalidLoginResponse = {
+      success: false,
+      message: 'Invalid email or password'
+    };
 
     // Validate email & password
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const hasValidEmail = /^\S+@\S+\.\S+$/.test(normalizedEmail);
+    if (!hasValidEmail || !String(password || '').trim()) {
+      return res.status(401).json(invalidLoginResponse);
     }
 
     // Check for user (normalize email to match stored lowercase value)
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return res.status(401).json(invalidLoginResponse);
     }
 
     // Check account status
@@ -132,13 +161,10 @@ exports.login = async (req, res) => {
         user.suspensionUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       }
       
-      await user.save();
+      // Avoid unrelated profile validation (e.g., phone format migration) during login bookkeeping.
+      await user.save({ validateBeforeSave: false });
       
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-        remainingAttempts: user.loginAttempts < 5 ? 5 - user.loginAttempts : 0
-      });
+      return res.status(401).json(invalidLoginResponse);
     }
 
     // Reset login attempts on successful login
@@ -154,7 +180,8 @@ exports.login = async (req, res) => {
       user.suspensionUntil = null;
     }
     
-    await user.save();
+    // Avoid unrelated profile validation (e.g., phone format migration) during login bookkeeping.
+    await user.save({ validateBeforeSave: false });
 
     // Generate token
     const token = generateToken(user._id);
@@ -191,9 +218,9 @@ exports.login = async (req, res) => {
 
     res.status(200).json(response);
   } catch (error) {
-    res.status(500).json({
+    res.status(401).json({
       success: false,
-      message: error.message
+      message: 'Invalid email or password'
     });
   }
 };

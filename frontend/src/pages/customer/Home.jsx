@@ -321,7 +321,7 @@ const Home = () => {
           ))}
         </div>
         
-        <div className="container hero-container">
+        <div className="layout-container hero-container">
           <div className="hero-content">
             <span className="hero-label">WELCOME TO MANI ELECTRICAL</span>
             <h1 className="hero-title">

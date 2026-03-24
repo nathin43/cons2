@@ -6,13 +6,21 @@
   "scripts": {
     "start": "node --openssl-legacy-provider server.js",
     "dev": "node validate-startup.js && node kill-port.js && nodemon --exec node --openssl-legacy-provider server.js",
+    "pm2:start": "npx pm2 start ecosystem.config.cjs --env production",
+    "pm2:restart": "npx pm2 restart mani-backend",
+    "pm2:stop": "npx pm2 stop mani-backend",
+    "pm2:delete": "npx pm2 delete mani-backend",
+    "pm2:logs": "npx pm2 logs mani-backend",
     "seed": "node --openssl-legacy-provider seeder.js",
+    "seed:admin": "node seed-main-admin.js",
+    "check:admins": "node check-admins.js",
     "seed:catalog": "node --openssl-legacy-provider seed-catalog.js",
     "seed:catalog:reset": "node --openssl-legacy-provider seed-catalog.js -d",
     "seed:services": "node --openssl-legacy-provider seed-services.js",
     "seed:pipes": "node --openssl-legacy-provider seed-pipes.js",
     "validate": "node validate-startup.js",
-    "test-db": "node check-mongodb.js"
+    "test-db": "node check-mongodb.js",
+    "verify:storage": "node verify-storage.js"
   },
   "keywords": [
     "ecommerce",

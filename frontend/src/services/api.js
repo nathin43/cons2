@@ -50,13 +50,25 @@ API.interceptors.request.use((config) => {
   let token = null;
   const adminToken = localStorage.getItem('adminToken');
   const userToken  = localStorage.getItem('token');
+  const url = String(config.url || '');
+  const method = String(config.method || '').toLowerCase();
+  const isUserReturnsRoute =
+    url.startsWith('/returns/my/refunds') ||
+    /^\/returns\/[^/]+\/messages$/.test(url);
+  const isAdminReturnsRoute =
+    url.startsWith('/returns') && !isUserReturnsRoute;
+  const isUserRefundsRoute =
+    url.startsWith('/refunds/my/list') ||
+    /^\/refunds\/[^/]+\/messages$/.test(url);
+  const isAdminRefundsRoute =
+    url.startsWith('/refunds') && !isUserRefundsRoute;
 
   // Admin-only routes — always use admin token
   if (
-    config.url.includes('/admin') ||
-    config.url.includes('/admin-management') ||
-    config.url.startsWith('/returns') ||
-    config.url.startsWith('/refunds')
+    url.includes('/admin') ||
+    url.includes('/admin-management') ||
+    isAdminReturnsRoute ||
+    isAdminRefundsRoute
   ) {
     token = adminToken;
   }
@@ -64,25 +76,27 @@ API.interceptors.request.use((config) => {
   // This prevents an admin's token being sent to customer APIs,
   // which causes "User not found" because the admin ID doesn't exist in Users collection.
   else if (
-    config.url.includes('/razorpay')             ||
-    config.url.includes('/cart')                 ||
-    config.url.includes('/reviews')              ||  // customer: product reviews/review checks
-    config.url.includes('/orders/myorders')      ||  // customer: view own orders
-    (config.url === '/orders' && config.method.toLowerCase() === 'post') || // customer: place order
-    (config.url.includes('/orders/') && config.url.includes('/cancel')) || // customer: cancel own order
-    config.url.includes('/contact/my-messages')  ||
-    config.url.includes('/user/notifications')   ||  // customer: notification bell
-    config.url.includes('/users/profile')        ||  // customer: profile page
-    config.url.includes('/auth/logout')              // customer logout (token cleared before call)
+    url.includes('/razorpay')             ||
+    url.includes('/cart')                 ||
+    url.includes('/reviews')              ||  // customer: product reviews/review checks
+    url.includes('/orders/myorders')      ||  // customer: view own orders
+    (url === '/orders' && method === 'post') || // customer: place order
+    (url.includes('/orders/') && url.includes('/cancel')) || // customer: cancel own order
+    url.includes('/contact/my-messages')  ||
+    url.includes('/user/notifications')   ||  // customer: notification bell
+    url.includes('/users/profile')        ||  // customer: profile page
+    url.includes('/auth/logout') ||
+    isUserReturnsRoute ||
+    isUserRefundsRoute                     // customer refund chat
   ) {
     token = userToken; // intentionally no adminToken fallback
   }
   // Other contact routes — admin token for read/update/delete (POST is public)
-  else if (config.url.includes('/contact') && config.method.toLowerCase() !== 'post') {
+  else if (url.includes('/contact') && method !== 'post') {
     token = adminToken;
   }
   // /orders (admin: list all, update status, view by user) — use admin token
-  else if (config.url.startsWith('/orders') && adminToken) {
+  else if (url.startsWith('/orders') && adminToken) {
     token = adminToken;
   }
   // Everything else (user profile, products, etc.) — use user token
@@ -93,15 +107,17 @@ API.interceptors.request.use((config) => {
   // Generic fallback ONLY for non-customer-critical routes
   // (customer-only routes already returned above without this fallback)
   const isCustomerOnlyRoute =
-    config.url.includes('/razorpay')           ||
-    config.url.includes('/cart')               ||
-    config.url.includes('/reviews')            ||
-    config.url.includes('/orders/myorders')    ||
-    (config.url === '/orders' && config.method.toLowerCase() === 'post') ||
-    (config.url.includes('/orders/') && config.url.includes('/cancel')) ||
-    config.url.includes('/user/notifications') ||
-    config.url.includes('/users/profile')      ||
-    config.url.includes('/auth/logout');
+    url.includes('/razorpay')           ||
+    url.includes('/cart')               ||
+    url.includes('/reviews')            ||
+    url.includes('/orders/myorders')    ||
+    (url === '/orders' && method === 'post') ||
+    (url.includes('/orders/') && url.includes('/cancel')) ||
+    url.includes('/user/notifications') ||
+    url.includes('/users/profile')      ||
+    url.includes('/auth/logout') ||
+    isUserReturnsRoute ||
+    isUserRefundsRoute;
   if (!token && !isCustomerOnlyRoute) {
     token = adminToken || userToken;
   }

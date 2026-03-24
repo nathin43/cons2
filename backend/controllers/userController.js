@@ -1,6 +1,27 @@
 const User = require('../models/User');
 const UserNotificationService = require('../services/userNotificationService');
 
+const normalizePhone = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return raw;
+
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+
+  let local = digits;
+  if (local.startsWith('91')) {
+    local = local.slice(2);
+  }
+  if (local.length > 10) {
+    local = local.slice(-10);
+  }
+
+  if (local.length === 10) return `+91${local}`;
+  return raw;
+};
+
+const isValidIndianPhone = (value) => /^\+91\d{10}$/.test(String(value || ''));
+
 /**
  * Get user profile
  * @route GET /api/users/profile
@@ -63,18 +84,20 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    // Validate phone (basic validation)
-    if (phone.trim().length < 10 || phone.trim().length > 20) {
+    const normalizedPhone = normalizePhone(phone);
+
+    // Validate phone in strict +91 format
+    if (!isValidIndianPhone(normalizedPhone)) {
       return res.status(400).json({
         success: false,
-        message: 'Phone number must be between 10 and 20 characters'
+        message: 'Phone number must be in +91XXXXXXXXXX format'
       });
     }
 
     // Prepare update object with only provided fields
     const updateData = {
       name: name.trim(),
-      phone: phone.trim()
+      phone: normalizedPhone
     };
 
     // Only update address if provided

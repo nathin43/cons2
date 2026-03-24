@@ -22,6 +22,15 @@ const toHourKey = (date) => {
   return `${y}-${m}-${day}-${h}`;
 };
 
+const startOfWeekMonday = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const weekday = d.getDay();
+  const diffToMonday = weekday === 0 ? -6 : 1 - weekday;
+  d.setDate(d.getDate() + diffToMonday);
+  return d;
+};
+
 export const bucketKeyForDate = (date, range) => {
   if (!date) return '';
   if (range === 'daily') return toHourKey(date);
@@ -50,15 +59,15 @@ export const getTimelinePoints = (range = 'monthly', dateFrom, dateTo) => {
   }
 
   if (range === 'weekly') {
-    const start = from ? new Date(from) : new Date(now);
-    start.setHours(0, 0, 0, 0);
+    const start = startOfWeekMonday(from || now);
+    const weekLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const points = [];
     for (let i = 0; i < 7; i += 1) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       points.push({
         key: bucketKeyForDate(d, range),
-        label: d.toLocaleDateString('en-IN', { weekday: 'short' }),
+        label: weekLabels[i],
         date: d,
       });
     }
@@ -113,4 +122,24 @@ export const mapSeriesToTimeline = (timeline, source, { getBucketKey, getValue }
 
 export const hasAnyNonZero = (series = []) => {
   return series.some((point) => Number(point.value || 0) > 0);
+};
+
+export const buildZeroSeriesForRange = (
+  range = 'monthly',
+  dateFrom,
+  dateTo,
+  fallbackCount = 5
+) => {
+  const timeline = getTimelinePoints(range, dateFrom, dateTo);
+  if (timeline.length > 0) {
+    return timeline.map((point) => ({
+      label: point.label,
+      value: 0,
+    }));
+  }
+
+  return Array.from({ length: fallbackCount }, (_, index) => ({
+    label: String(index + 1),
+    value: 0,
+  }));
 };

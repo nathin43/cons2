@@ -19,6 +19,7 @@ const AdminLayout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingReturns, setPendingReturns] = useState(0);
+  const [pendingRefunds, setPendingRefunds] = useState(0);
 
   // Debug: Log admin data
   console.log('AdminLayout - Admin Data:', admin);
@@ -51,14 +52,27 @@ const AdminLayout = ({ children }) => {
         // Non-critical: silently ignore
       }
     };
+
+    const fetchPendingRefunds = async () => {
+      try {
+        const { data } = await API.get('/refunds/stats');
+        if (data.success) {
+          setPendingRefunds(data.stats?.pending || 0);
+        }
+      } catch (error) {
+        // Non-critical: silently ignore
+      }
+    };
     
     fetchUnreadCount();
     fetchPendingReturns();
+    fetchPendingRefunds();
     
     // Refresh every 2 minutes
     const interval = setInterval(() => {
       fetchUnreadCount();
       fetchPendingReturns();
+      fetchPendingRefunds();
     }, 120000);
     
     return () => clearInterval(interval);
@@ -78,7 +92,7 @@ const AdminLayout = ({ children }) => {
     { path: '/admin/customers', icon: '👥', label: 'Customers', tooltip: 'Customers' },
     { path: '/admin/reports', icon: '📄', label: 'Reports', tooltip: 'Reports' },
     { path: '/admin/contact-messages', icon: '✉️', label: 'Contact Messages', tooltip: 'Contact Messages' },
-    { path: '/admin/refund-requests', icon: '↩️', label: 'Refund Requests', tooltip: 'Refund Requests' }
+    { path: '/admin/refund-requests', icon: '↩️', label: 'Returns & Refunds', tooltip: 'Returns & Refunds' }
   ];
 
   // Only add Admin Management menu for MAIN_ADMIN (role-based check)
@@ -122,8 +136,8 @@ const AdminLayout = ({ children }) => {
                   {item.path === '/admin/contact-messages' && unreadMessages > 0 && (
                     <span className="menu-badge">{unreadMessages}</span>
                   )}
-                  {item.path === '/admin/refund-requests' && pendingReturns > 0 && (
-                    <span className="menu-badge menu-badge-warning">{pendingReturns}</span>
+                  {item.path === '/admin/refund-requests' && pendingRefunds > 0 && (
+                    <span className="menu-badge menu-badge-warning">{pendingRefunds + pendingReturns}</span>
                   )}
                   {location.pathname === item.path && <span className="active-indicator"></span>}
                 </Link>

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useToast } from '../../hooks/useToast';
+import LoadingOverlay from '../../components/LoadingOverlay';
 import API from '../../services/api';
 import './Orders.css';
 
@@ -11,13 +12,19 @@ import './Orders.css';
  * View order history and status with 24-hour cancellation policy
  */
 const Orders = () => {
-  const cancellationReasonOptions = [
+  const codCancellationReasonOptions = [
     'Ordered by mistake',
-    'Found cheaper elsewhere',
-    'Delivery too long',
-    'Wrong item',
-    'Change address',
-    'Other reason'
+    'Found better price',
+    'Delivery too slow',
+    'Other'
+  ];
+
+  const onlineCancellationReasonOptions = [
+    'Ordered by mistake',
+    'Found better price',
+    'Delivery too slow',
+    'Payment issue',
+    'Other'
   ];
 
   const location = useLocation();
@@ -36,11 +43,20 @@ const Orders = () => {
     paidAmount: 0,
     cancelReason: '',
     customCancelReason: '',
+    refundMethod: 'original',
+    refundUpiId: '',
+    refundBankAccountName: '',
+    refundBankAccountNumber: '',
+    refundBankIfsc: '',
+    refundBankName: '',
     sendSupportMessage: false,
     supportMessage: '',
     validationError: ''
   });
   const [cancelling, setCancelling] = useState(false);
+  const [refundMap, setRefundMap] = useState({});
+  const [refundInputMap, setRefundInputMap] = useState({});
+  const [sendingRefundFor, setSendingRefundFor] = useState('');
   const [showOrderSuccess, setShowOrderSuccess] = useState(!!location.state?.orderSuccess);
   const [dismissingSuccess, setDismissingSuccess] = useState(false);
   const { success, error: showError } = useToast();
@@ -62,9 +78,17 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchMyRefundConversations();
+
+    const pollTimer = setInterval(() => {
+      fetchMyRefundConversations();
+    }, 15000);
+
+    return () => clearInterval(pollTimer);
   }, []);
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
       setError('');
       const { data } = await API.get('/orders/myorders');
@@ -76,6 +100,43 @@ const Orders = () => {
       setOrders([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMyRefundConversations = async () => {
+    try {
+      const { data } = await API.get('/refunds/my/list');
+      if (!data?.success) return;
+
+      const nextMap = {};
+      (data.refunds || []).forEach((refund) => {
+        if (!refund?.orderId) return;
+        nextMap[String(refund.orderId)] = refund;
+      });
+
+      setRefundMap(nextMap);
+    } catch (err) {
+      // Avoid noisy toasts during polling if refunds are not available.
+      console.debug('Refund conversation fetch skipped:', err?.response?.status || err.message);
+    }
+  };
+
+  const handleSendRefundMessage = async (refundId, orderNumber) => {
+    const inputKey = String(orderNumber);
+    const text = String(refundInputMap[inputKey] || '').trim();
+    if (!text) return;
+
+    setSendingRefundFor(refundId);
+    try {
+      const { data } = await API.post(`/refunds/${refundId}/messages`, { message: text });
+      if (data?.success) {
+        setRefundInputMap((prev) => ({ ...prev, [inputKey]: '' }));
+        await fetchMyRefundConversations();
+      }
+    } catch (err) {
+      showError(err.response?.data?.message || 'Unable to send message right now.');
+    } finally {
+      setSendingRefundFor('');
     }
   };
 
@@ -126,6 +187,12 @@ const Orders = () => {
       paidAmount: order.totalAmount || order.totalPrice || 0,
       cancelReason: '',
       customCancelReason: '',
+      refundMethod: 'original',
+      refundUpiId: '',
+      refundBankAccountName: '',
+      refundBankAccountNumber: '',
+      refundBankIfsc: '',
+      refundBankName: '',
       sendSupportMessage: false,
       supportMessage: '',
       validationError: ''
@@ -145,24 +212,32 @@ const Orders = () => {
       paidAmount: 0,
       cancelReason: '',
       customCancelReason: '',
+      refundMethod: 'original',
+      refundUpiId: '',
+      refundBankAccountName: '',
+      refundBankAccountNumber: '',
+      refundBankIfsc: '',
+      refundBankName: '',
       sendSupportMessage: false,
       supportMessage: '',
       validationError: ''
     });
   };
 
-  const isCodOrder = (cancelModal.paymentMethod || '').toLowerCase() === 'cash on delivery';
-  const isRazorpayOrder = (cancelModal.paymentMethod || '').toLowerCase() === 'razorpay';
+  const paymentMethodLower = (cancelModal.paymentMethod || '').toLowerCase();
+  const isCodOrder = paymentMethodLower === 'cash on delivery' || paymentMethodLower === 'cod';
+  const isOnlinePaymentOrder = !isCodOrder;
+  const cancellationReasonOptions = isCodOrder ? codCancellationReasonOptions : onlineCancellationReasonOptions;
 
   const isCancelReasonValid = Boolean(
     cancelModal.cancelReason &&
-    (cancelModal.cancelReason !== 'Other reason' || cancelModal.customCancelReason.trim())
+    (cancelModal.cancelReason !== 'Other' || cancelModal.customCancelReason.trim())
   );
 
   const handleCancelOrder = async () => {
     const selectedReason = cancelModal.cancelReason?.trim();
     const customReason = cancelModal.customCancelReason?.trim();
-    const hasValidReason = selectedReason && (selectedReason !== 'Other reason' || customReason);
+    const hasValidReason = selectedReason && (selectedReason !== 'Other' || customReason);
 
     if (!hasValidReason) {
       setCancelModal((prev) => ({
@@ -174,12 +249,23 @@ const Orders = () => {
 
     setCancelling(true);
     try {
-      await API.put(`/orders/${cancelModal.orderId}/cancel`, {
+      const payload = {
         cancelReason: cancelModal.cancelReason,
         customCancelReason: cancelModal.customCancelReason,
-        supportMessage: cancelModal.sendSupportMessage ? cancelModal.supportMessage?.trim() : ''
-      });
-      success('Order cancelled successfully. Refund will be processed within 5-7 business days.');
+        supportMessage: ''
+      };
+
+      if (isOnlinePaymentOrder) {
+        payload.refundMethod = 'original';
+      }
+
+      const { data } = await API.put(`/orders/${cancelModal.orderId}/cancel`, payload);
+
+      if (isCodOrder) {
+        success('Order cancelled successfully. No refund is applicable for Cash on Delivery orders.');
+      } else {
+        success(data?.message || 'Order cancelled. Refund request submitted for admin review.');
+      }
       closeCancelModal();
       fetchOrders();
     } catch (error) {
@@ -189,27 +275,10 @@ const Orders = () => {
     }
   };
 
-  // Don't show the loading spinner if we came from a successful order —
-  // the success overlay should appear immediately without the spinner flash.
-  if (loading && !showOrderSuccess) {
-    return (
-      <>
-        <Navbar />
-        <div className="orders-page">
-          <div className="container">
-            <div className="loading-spinner">
-              <div className="spinner"></div>
-              <p>Loading your orders...</p>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       <Navbar />
+      <LoadingOverlay visible={loading} message="Loading your orders..." />
 
       <div className="orders-page">
         <div className="container">
@@ -272,12 +341,7 @@ const Orders = () => {
             </div>
           )}
 
-          {loading ? (
-            <div className="loading-spinner">
-              <div className="spinner"></div>
-              <p>Loading your orders...</p>
-            </div>
-          ) : orders.length === 0 ? (
+          {loading ? null : orders.length === 0 ? (
             <div className="no-orders">
               <div className="no-orders-icon">📦</div>
               <h2>No orders yet</h2>
@@ -290,6 +354,13 @@ const Orders = () => {
                 const isCancellableStatus = ['pending', 'confirmed'].includes((order.orderStatus || '').toLowerCase());
                 const canCancel = isCancellableStatus && isWithinCancellationWindow(order.createdAt);
                 const hoursRemaining = getHoursRemaining(order.createdAt);
+                const orderPaymentMethodLower = String(order.paymentMethod || '').toLowerCase();
+                const isOrderCod = orderPaymentMethodLower === 'cash on delivery' || orderPaymentMethodLower === 'cod';
+                const refundConversation = refundMap[String(order.orderNumber)] || null;
+                const refundMessages = refundConversation?.messages || [];
+                const lastRefundMessage = refundMessages.length > 0 ? refundMessages[refundMessages.length - 1] : null;
+                const waitingForAdminReply = lastRefundMessage && lastRefundMessage.sender === 'USER';
+                const unreadFromAdmin = lastRefundMessage && lastRefundMessage.sender === 'ADMIN';
 
                 return (
                   <div key={order._id} className="order-card">
@@ -403,6 +474,60 @@ const Orders = () => {
                                 })}
                               </p>
                             )}
+
+                            {!isOrderCod && (
+                              <div className="refund-conversation-box">
+                                <div className="refund-conversation-header">
+                                  <h4>Refund Conversation</h4>
+                                  {unreadFromAdmin && <span className="refund-badge refund-badge-new">New reply</span>}
+                                  {waitingForAdminReply && <span className="refund-badge refund-badge-wait">Waiting for admin</span>}
+                                </div>
+
+                                {!refundConversation ? (
+                                  <p className="refund-conversation-empty">
+                                    Refund request is being prepared. Please check back shortly.
+                                  </p>
+                                ) : (
+                                  <>
+                                    <div className="refund-chat-thread">
+                                      {refundMessages.length === 0 ? (
+                                        <p className="refund-conversation-empty">No messages yet.</p>
+                                      ) : (
+                                        refundMessages.map((msg) => (
+                                          <div
+                                            key={`${msg._id}-${msg.createdAt}`}
+                                            className={`refund-chat-bubble ${msg.sender === 'USER' ? 'refund-chat-user' : 'refund-chat-admin'}`}
+                                          >
+                                            <p>{msg.message}</p>
+                                            <span>{new Date(msg.createdAt).toLocaleString('en-IN')}</span>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+
+                                    <div className="refund-chat-compose">
+                                      <textarea
+                                        rows={2}
+                                        placeholder="Write a message to support about this refund..."
+                                        value={refundInputMap[String(order.orderNumber)] || ''}
+                                        onChange={(e) => setRefundInputMap((prev) => ({
+                                          ...prev,
+                                          [String(order.orderNumber)]: e.target.value,
+                                        }))}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="refund-chat-send"
+                                        disabled={sendingRefundFor === refundConversation.refundId || !String(refundInputMap[String(order.orderNumber)] || '').trim()}
+                                        onClick={() => handleSendRefundMessage(refundConversation.refundId, order.orderNumber)}
+                                      >
+                                        {sendingRefundFor === refundConversation.refundId ? 'Sending...' : 'Send'}
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -450,29 +575,21 @@ const Orders = () => {
                       }}
                     />
                     <div className="modal-order-meta">
-                      <p className="modal-order-product-name">
-                        {cancelModal.orderItems[0].name}
+                      <p className="modal-order-product-line">
+                        <strong>{cancelModal.orderItems[0].name}</strong>
                         {cancelModal.orderItems.length > 1 && ` +${cancelModal.orderItems.length - 1} more`}
-                      </p>
-                      <p className="modal-order-qty-price">
-                        Qty:{cancelModal.orderItems.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                        <span className="modal-order-qty-divider">|</span>
+                        Qty {cancelModal.orderItems.reduce((sum, item) => sum + (item.quantity || 0), 0)}
                         <span className="modal-order-qty-divider">|</span>
                         ₹{Number(cancelModal.totalAmount || 0).toLocaleString('en-IN')}
                       </p>
                       <p className="modal-order-payment-line">
-                        Payment: {isCodOrder ? 'COD' : isRazorpayOrder ? 'Razorpay' : (cancelModal.paymentMethod || 'Online')}
-                        <span className="modal-order-qty-divider">•</span>
-                        {(cancelModal.paymentStatus || (isCodOrder ? 'pending' : 'paid')).toUpperCase()}
+                        Payment: {isCodOrder ? 'COD' : 'RAZORPAY'} ({(cancelModal.paymentStatus || (isCodOrder ? 'pending' : 'paid')).toUpperCase()})
                       </p>
-                      {cancelModal.paymentId && (
-                        <p className="modal-order-transaction-id">Txn ID: {cancelModal.paymentId}</p>
-                      )}
                     </div>
                   </div>
                 )}
               </div>
-
-              <div className="modal-divider" />
 
               <div className="modal-section cancel-reason-section">
                 <h4 className="modal-section-title">Cancel Reason</h4>
@@ -492,7 +609,7 @@ const Orders = () => {
                           setCancelModal((prev) => ({
                             ...prev,
                             cancelReason: nextReason,
-                            customCancelReason: nextReason === 'Other reason' ? prev.customCancelReason : '',
+                            customCancelReason: nextReason === 'Other' ? prev.customCancelReason : '',
                             validationError: ''
                           }));
                         }}
@@ -502,7 +619,7 @@ const Orders = () => {
                   ))}
                 </div>
 
-                {cancelModal.cancelReason === 'Other reason' && (
+                {cancelModal.cancelReason === 'Other' && (
                   <textarea
                     className="cancel-reason-textarea"
                     placeholder="Please tell us more"
@@ -523,61 +640,18 @@ const Orders = () => {
                 )}
               </div>
 
-              <div className="modal-divider" />
-
               {isCodOrder ? (
                 <div className="modal-section cod-info-box">
                   <p className="cod-info-text">
-                    This order was placed using Cash on Delivery. No refund will be issued.
+                    No refund applicable for Cash on Delivery orders.
                   </p>
                 </div>
               ) : (
-                <div className="modal-section cancellation-terms refund-info-box">
-                  <h4 className="refund-info-title">Refund Details</h4>
-                  <ul className="cancellation-terms-list">
-                    <li>
-                      <span className="terms-check-icon">•</span>
-                      Refund will be sent to original payment method
-                    </li>
-                    <li>
-                      <span className="terms-check-icon">•</span>
-                      Refund processing time: 5-7 business days
-                    </li>
-                    <li>
-                      <span className="terms-check-icon">•</span>
-                      Refund status will be updated in your orders page
-                    </li>
-                  </ul>
+                <div className="modal-section refund-info-box refund-info-inline">
+                  <p className="refund-inline-primary">Refund will be processed to your original payment method</p>
+                  <p className="refund-inline-secondary">Refund will be credited within 5-7 business days</p>
                 </div>
               )}
-
-              <div className="modal-divider" />
-
-              <div className="modal-section optional-message-box">
-                <h4 className="modal-section-title">Optional Message to Support / Admin</h4>
-                <label className="optional-message-toggle">
-                  <input
-                    type="checkbox"
-                    checked={cancelModal.sendSupportMessage}
-                    onChange={(e) => setCancelModal((prev) => ({
-                      ...prev,
-                      sendSupportMessage: e.target.checked,
-                      supportMessage: e.target.checked ? prev.supportMessage : ''
-                    }))}
-                  />
-                  <span>Send a message regarding this cancellation</span>
-                </label>
-
-                {cancelModal.sendSupportMessage && (
-                  <textarea
-                    className="cancel-reason-textarea optional-message-textarea"
-                    placeholder="Write a message for the refund or cancellation request (optional)"
-                    rows={2}
-                    value={cancelModal.supportMessage}
-                    onChange={(e) => setCancelModal((prev) => ({ ...prev, supportMessage: e.target.value }))}
-                  />
-                )}
-              </div>
             </div>
 
             {/* Footer */}
@@ -600,7 +674,7 @@ const Orders = () => {
                     Cancelling...
                   </>
                 ) : (
-                  'Cancel Order'
+                  'Confirm Cancellation'
                 )}
               </button>
             </div>

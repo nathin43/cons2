@@ -20,7 +20,7 @@ import {
   getTimelinePoints,
   mapSeriesToTimeline,
   bucketKeyForDate,
-  hasAnyNonZero,
+  buildZeroSeriesForRange,
 } from '../../utils/reportChartTimeline';
 import ModernReportChart from '../../components/admin/ModernReportChart';
 import useReportAutoRefresh from '../../hooks/useReportAutoRefresh';
@@ -34,15 +34,14 @@ const SalesReport = () => {
   const [exporting, setExporting] = useState(false);
   const [allSalesData, setAllSalesData] = useState([]);
   const [salesData, setSalesData] = useState([]);
-  const [salesTrend, setSalesTrend] = useState([]);
   const [selectedRange, setSelectedRange] = useState('monthly');
   const [periodAnchor, setPeriodAnchor] = useState(new Date());
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [comparison, setComparison] = useState(null);
-  const [backendChart, setBackendChart] = useState(null);
   const [dateRangeLabel, setDateRangeLabel] = useState('');
   const initialRange = useMemo(() => getRangeDates('monthly'), []);
   const [filters, setFilters] = useState({
@@ -61,10 +60,7 @@ const SalesReport = () => {
 
   // Refs to prevent duplicate calls
   const isFetchingRef = useRef(false);
-  const cacheRef = useRef(null);
-  const cacheTimeRef = useRef(0);
   const chartRef = useRef(null);
-  const CACHE_DURATION = 30000; // 30 seconds
 
   // Memoized fetch function
   const fetchSalesData = useCallback(async (forceRefresh = false, rangeOverride = selectedRange, filtersOverride = null) => {
@@ -75,14 +71,8 @@ const SalesReport = () => {
       return;
     }
 
-    // Check cache if not forcing refresh
-    if (!forceRefresh && cacheRef.current && (Date.now() - cacheTimeRef.current < CACHE_DURATION)) {
-      console.log('📊 Using cached sales data');
-      setAllSalesData(cacheRef.current.data);
-      return; // run() handles loading=false
-    }
-    
     isFetchingRef.current = true;
+    setIsDataLoading(true);
     // loading is managed by useAdminLoader’s run()
     setErrorMessage('');
 
@@ -94,8 +84,14 @@ const SalesReport = () => {
       }
 
       const params = new URLSearchParams();
-      if (activeFilters.dateFrom) params.append('dateFrom', activeFilters.dateFrom);
-      if (activeFilters.dateTo) params.append('dateTo', activeFilters.dateTo);
+      if (rangeOverride === 'daily') {
+        const todayRange = getRangeDates('daily', new Date());
+        params.append('dateFrom', formatDateInput(todayRange.from));
+        params.append('dateTo', formatDateInput(todayRange.to));
+      } else {
+        if (activeFilters.dateFrom) params.append('dateFrom', activeFilters.dateFrom);
+        if (activeFilters.dateTo) params.append('dateTo', activeFilters.dateTo);
+      }
       if (activeFilters.minAmount) params.append('minAmount', activeFilters.minAmount);
       if (activeFilters.maxAmount) params.append('maxAmount', activeFilters.maxAmount);
       if (activeFilters.status) params.append('status', activeFilters.status);
@@ -110,12 +106,10 @@ const SalesReport = () => {
       if (response.data?.success) {
         const reportData = response.data.data || [];
         const summary = response.data.summary || {};
-        const chart = response.data.chart || null;
-
         // Update state
         setAllSalesData(reportData);
-        setBackendChart(chart);
         setComparison(summary.comparison || null);
+        setLastUpdatedAt(new Date());
 
         if (summary.dateRange?.from && summary.dateRange?.to) {
           setDateRangeLabel(`${formatDateLabel(summary.dateRange.from)} - ${formatDateLabel(summary.dateRange.to)}`);
@@ -123,10 +117,6 @@ const SalesReport = () => {
           setDateRangeLabel('');
         }
 
-        // Cache the results
-        cacheRef.current = { data: reportData };
-        cacheTimeRef.current = Date.now();
-        
         console.log(`✅ Sales report loaded: ${reportData.length} records`);
       } else {
         throw new Error('Invalid response format');
@@ -141,14 +131,17 @@ const SalesReport = () => {
         return;
       }
       
-      const errorMsg = err.response?.data?.message || 'Failed to load sales report. Please try again.';
-      setErrorMessage(errorMsg);
-      setSalesTrend([]);
-      setBackendChart(null);
+      const defaultErrorMessage = rangeOverride === 'daily'
+        ? "Unable to fetch today's sales"
+        : 'Failed to load sales report. Please try again.';
+      const errorMsg = err.response?.data?.message || defaultErrorMessage;
+      const messageToDisplay = rangeOverride === 'daily' ? "Unable to fetch today's sales" : errorMsg;
+      setErrorMessage(messageToDisplay);
       setComparison(null);
-      error(errorMsg);
+      error(messageToDisplay);
     } finally {
       isFetchingRef.current = false;
+      setIsDataLoading(false);
       // loading state managed by useAdminLoader's run()
     }
   }, [filters, navigate, error, selectedRange]);
@@ -166,12 +159,16 @@ const SalesReport = () => {
   }, []);
 
   useEffect(() => {
+    const todayRange = getRangeDates('daily', new Date());
+    const effectiveDateFrom = selectedRange === 'daily' ? formatDateInput(todayRange.from) : filters.dateFrom;
+    const effectiveDateTo = selectedRange === 'daily' ? formatDateInput(todayRange.to) : filters.dateTo;
+
     const filtered = filterByDateRange(
       allSalesData,
       selectedRange,
       'createdAt',
-      filters.dateFrom,
-      filters.dateTo
+      effectiveDateFrom,
+      effectiveDateTo
     );
 
     setSalesData(filtered);
@@ -190,12 +187,6 @@ const SalesReport = () => {
       completedOrders,
     });
 
-    const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
-    const trend = mapSeriesToTimeline(timeline, filtered, {
-      getBucketKey: (item) => bucketKeyForDate(item.createdAt, selectedRange),
-      getValue: (item) => Number(item.totalAmount || 0),
-    });
-    setSalesTrend(trend);
   }, [allSalesData, selectedRange, filters.dateFrom, filters.dateTo]);
 
   useReportAutoRefresh(
@@ -215,16 +206,12 @@ const SalesReport = () => {
     setPeriodAnchor(nextAnchor);
     setSelectedRange(range);
     setFilters(nextFilters);
-    cacheRef.current = null;
-    setIsUpdating(true);
-    try {
-      await fetchSalesData(true, range, nextFilters);
-    } finally {
-      setIsUpdating(false);
-    }
+    await fetchSalesData(true, range, nextFilters);
   };
 
   const handleShiftPeriod = async (direction) => {
+    if (selectedRange === 'daily') return;
+
     const nextAnchor = shiftRangeAnchor(selectedRange, periodAnchor, direction);
     const next = getRangeDates(selectedRange, nextAnchor);
     const nextFilters = {
@@ -235,13 +222,7 @@ const SalesReport = () => {
 
     setPeriodAnchor(nextAnchor);
     setFilters(nextFilters);
-    cacheRef.current = null;
-    setIsUpdating(true);
-    try {
-      await fetchSalesData(true, selectedRange, nextFilters);
-    } finally {
-      setIsUpdating(false);
-    }
+    await fetchSalesData(true, selectedRange, nextFilters);
   };
 
   const handleFilterChange = (e) => {
@@ -250,13 +231,7 @@ const SalesReport = () => {
   };
 
   const handleApplyFilters = async () => {
-    cacheRef.current = null; // Clear cache when filters change
-    setIsUpdating(true);
-    try {
-      await fetchSalesData(true, selectedRange);
-    } finally {
-      setIsUpdating(false);
-    }
+    await fetchSalesData(true, selectedRange);
   };
 
   const handleClearFilters = () => {
@@ -298,17 +273,20 @@ const SalesReport = () => {
 
       // ── 1. Shop letterhead ────────────────────────────────────────────────
       let y = addShopHeader(doc, 'SALES REPORT', ACCENT);
+      const exportTitle = `${getRangeTitle(selectedRange)} Sales Report`;
+      const exportRangeLabel =
+        dateRangeLabel || `${formatDateLabel(filters.dateFrom)} - ${formatDateLabel(filters.dateTo)}`;
 
       doc.setFont(PDF_FONT, 'bold');
       doc.setFontSize(9);
       doc.setTextColor(...TEXT);
-      doc.text(`${getRangeTitle(selectedRange)} Sales Report`, MARGIN, y);
+      doc.text(exportTitle, MARGIN, y);
       y += 5;
-      if (dateRangeLabel) {
+      if (exportRangeLabel) {
         doc.setFont(PDF_FONT, 'normal');
         doc.setFontSize(8);
         doc.setTextColor(...SUBTEXT);
-        doc.text(`Range: ${dateRangeLabel}`, MARGIN, y);
+        doc.text(`Range: ${exportRangeLabel}`, MARGIN, y);
         y += 5;
       }
 
@@ -457,6 +435,10 @@ const SalesReport = () => {
         }
       });
 
+      if (tableRows.length === 0) {
+        tableRows.push(['—', 'No records for selected filter', '—', '—', '—', rupee(0), '—', '—']);
+      }
+
       // ── 6. autoTable ──────────────────────────────────────────────────────
       autoTable(doc, {
         startY: y,
@@ -563,21 +545,32 @@ const SalesReport = () => {
     });
   };
 
-  const chartData = useMemo(() => {
-    if (backendChart?.labels?.length && backendChart?.data?.length) {
-      return backendChart.labels.map((label, index) => ({
-        label,
-        value: Number(backendChart.data[index] || 0),
-      }));
-    }
+  const formatLastUpdated = (date) => {
+    if (!date) return '--:--';
+    return new Date(date).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
 
+  const chartData = useMemo(() => {
     const timeline = getTimelinePoints(selectedRange, filters.dateFrom, filters.dateTo);
     return mapSeriesToTimeline(timeline, salesData, {
       getBucketKey: (item) => bucketKeyForDate(item.createdAt, selectedRange),
       getValue: (item) => Number(item.totalAmount || 0),
     });
-  }, [backendChart, salesData, selectedRange, filters.dateFrom, filters.dateTo]);
-  const showNoDataHint = !hasAnyNonZero(chartData);
+  }, [salesData, selectedRange, filters.dateFrom, filters.dateTo]);
+  const fallbackFlatChartData = useMemo(
+    () => buildZeroSeriesForRange(selectedRange, filters.dateFrom, filters.dateTo),
+    [selectedRange, filters.dateFrom, filters.dateTo]
+  );
+  const salesChartRenderData = chartData.length > 0 ? chartData : fallbackFlatChartData;
+  const isTodaySelected = selectedRange === 'daily';
+  const showTodaySkeleton = isTodaySelected && isDataLoading && salesData.length === 0;
+  const showTodayError = isTodaySelected && !showTodaySkeleton && !!errorMessage;
+  const showTodayEmpty = isTodaySelected && !showTodaySkeleton && !errorMessage && salesData.length === 0;
+  const showReportDashboard = !isTodaySelected || (!showTodaySkeleton && !showTodayError && salesData.length > 0);
 
   // Show identical Dashboard skeleton while loading (initial or filter refresh)
   if (loading && isInitialLoading) {
@@ -590,7 +583,7 @@ const SalesReport = () => {
 
   return (
     <AdminLayout>
-      <div className={`admin-report-page ${isUpdating ? 'is-updating' : ''}`}>
+      <div className="admin-report-page">
         {/* Header */}
         <div className="report-page-header">
           <button className="btn-back" onClick={() => navigate('/admin/reports')}>
@@ -629,11 +622,21 @@ const SalesReport = () => {
           </div>
           <div className="report-controls">
             <div className="report-period-nav">
-              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(-1)}>
+              <button
+                type="button"
+                className="period-nav-btn"
+                onClick={() => handleShiftPeriod(-1)}
+                disabled={isTodaySelected}
+              >
                 ← Prev
               </button>
               <span className="period-nav-current">{getRangePeriodLabel(selectedRange, periodAnchor)}</span>
-              <button type="button" className="period-nav-btn" onClick={() => handleShiftPeriod(1)}>
+              <button
+                type="button"
+                className="period-nav-btn"
+                onClick={() => handleShiftPeriod(1)}
+                disabled={isTodaySelected}
+              >
                 Next →
               </button>
             </div>
@@ -652,7 +655,66 @@ const SalesReport = () => {
           </div>
         </div>
 
-        <div className="report-chart-panel">
+        {isTodaySelected && (
+          <div className="sales-last-updated">
+            Last updated: {formatLastUpdated(lastUpdatedAt)}
+          </div>
+        )}
+
+        {!isTodaySelected && errorMessage && (
+          <div className="report-inline-error">{errorMessage}</div>
+        )}
+
+        {showTodaySkeleton && (
+          <div className="sales-today-state sales-state-animated">
+            <div className="sales-today-skeleton-card">
+              <div className="sales-today-skeleton-line short" />
+              <div className="sales-today-skeleton-line medium" />
+              <div className="sales-today-skeleton-grid">
+                <div className="sales-today-skeleton-box" />
+                <div className="sales-today-skeleton-box" />
+                <div className="sales-today-skeleton-box" />
+                <div className="sales-today-skeleton-box" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showTodayError && (
+          <div className="sales-today-state sales-state-animated">
+            <div className="sales-today-empty-card is-error">
+              <div className="sales-today-empty-icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 8v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="12" cy="16.5" r="1" fill="currentColor" />
+                  <path d="M10.3 3.6L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.6a2 2 0 00-3.4 0z" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </div>
+              <h3>Unable to fetch today&apos;s sales</h3>
+              <p>Please refresh or try again in a moment.</p>
+            </div>
+          </div>
+        )}
+
+        {showTodayEmpty && (
+          <div className="sales-today-state sales-state-animated">
+            <div className="sales-today-empty-card">
+              <div className="sales-today-empty-icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M12 10v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="12" cy="7.5" r="1" fill="currentColor" />
+                </svg>
+              </div>
+              <h3>No sales today</h3>
+              <p>Sales have not started yet for today</p>
+            </div>
+          </div>
+        )}
+
+        {showReportDashboard && (
+          <>
+        <div className="report-chart-panel sales-state-animated">
           <div className="report-chart-header">
             <h3 className="report-chart-title">Daily Sales Trend</h3>
             {comparison && (
@@ -664,7 +726,7 @@ const SalesReport = () => {
           <div className="report-chart-box" ref={chartRef}>
             <ModernReportChart
               type="line"
-              data={chartData}
+              data={salesChartRenderData}
               xKey="label"
               valueKey="value"
               title="Revenue Trend"
@@ -676,16 +738,11 @@ const SalesReport = () => {
               showPeakLow
               animationDuration={800}
             />
-            {showNoDataHint && (
-              <div className="report-chart-overlay">
-                <span className="report-chart-overlay__text">No sales recorded</span>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Analytics Summary */}
-        <div className="analytics-summary">
+        <div className="analytics-summary sales-state-animated">
           <div className="analytics-card">
             <div className="analytics-icon" style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)' }}>
               📊
@@ -788,7 +845,7 @@ const SalesReport = () => {
         )}
 
         {/* Sales Data Table */}
-        <div className="report-table-container">
+        <div className="report-table-container sales-state-animated">
           <div className="table-info">
             <p>Showing {salesData.length} sales records</p>
           </div>
@@ -854,6 +911,8 @@ const SalesReport = () => {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </AdminLayout>
   );

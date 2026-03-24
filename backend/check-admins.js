@@ -6,7 +6,7 @@ dotenv.config();
 
 async function checkAdmins() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI);
     console.log('Connected to DB');
 
     const admins = await Admin.find().select('name email role');

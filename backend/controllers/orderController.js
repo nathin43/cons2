@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const Report = require('../models/Report');
 const Payment = require('../models/Payment');
 const Refund = require('../models/Refund');
+const RefundMessage = require('../models/RefundMessage');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const NotificationService = require('../services/notificationService');
@@ -479,7 +480,14 @@ exports.updateOrderStatus = async (req, res) => {
  */
 exports.cancelOrder = async (req, res) => {
   try {
-    const { cancelReason, customCancelReason, supportMessage } = req.body || {};
+    const {
+      cancelReason,
+      customCancelReason,
+      supportMessage,
+      refundMethod,
+      refundUpiId,
+      refundBankDetails,
+    } = req.body || {};
 
     const order = await Order.findById(req.params.id);
 
@@ -534,34 +542,88 @@ exports.cancelOrder = async (req, res) => {
     order.cancelledBy = cancelledBy;
     await order.save();
 
-    // Create a refund request automatically for paid orders.
-    if (order.paymentStatus === 'paid') {
+    const paymentMethodLower = String(order.paymentMethod || '').toLowerCase();
+    const isCodOrder = paymentMethodLower === 'cash on delivery' || paymentMethodLower === 'cod';
+    const isPaidOnlineOrder = !isCodOrder && String(order.paymentStatus || '').toLowerCase() === 'paid';
+    let refundRequestCreated = false;
+
+    // For paid online orders, create an admin-manageable refund request entry.
+    if (isPaidOnlineOrder) {
       try {
-        const existingRefund = await Refund.findOne({
+        const existingRequest = await Refund.findOne({
           order: order._id,
-          refundStatus: { $nin: ['rejected'] }
+          refundType: 'cancellation',
+          refundStatus: { $nin: ['rejected'] },
         });
 
-        if (!existingRefund) {
-          await Refund.create({
+        if (!existingRequest) {
+          const customer = await User.findById(order.user).select('name email phone').lean();
+
+          const refundMethodText = String(refundMethod || '').trim();
+          const normalizedRefundMethod = refundMethodText ? refundMethodText.toUpperCase() : null;
+          const refundPreferenceLines = [];
+          if (normalizedRefundMethod) {
+            refundPreferenceLines.push(`Preferred refund method: ${normalizedRefundMethod}`);
+          }
+          if (normalizedRefundMethod === 'UPI' && String(refundUpiId || '').trim()) {
+            refundPreferenceLines.push(`UPI ID: ${String(refundUpiId).trim()}`);
+          }
+          if (normalizedRefundMethod === 'BANK' && refundBankDetails && typeof refundBankDetails === 'object') {
+            const accountName = String(refundBankDetails.accountName || '').trim();
+            const accountNumber = String(refundBankDetails.accountNumber || '').trim();
+            const ifscCode = String(refundBankDetails.ifscCode || '').trim();
+            const bankName = String(refundBankDetails.bankName || '').trim();
+            if (accountName) refundPreferenceLines.push(`Account holder: ${accountName}`);
+            if (accountNumber) refundPreferenceLines.push(`Account number: ${accountNumber}`);
+            if (ifscCode) refundPreferenceLines.push(`IFSC: ${ifscCode}`);
+            if (bankName) refundPreferenceLines.push(`Bank: ${bankName}`);
+          }
+
+          const customerMessageParts = [];
+          if (optionalSupportMessage) {
+            customerMessageParts.push(optionalSupportMessage);
+          }
+          if (refundPreferenceLines.length > 0) {
+            customerMessageParts.push(refundPreferenceLines.join('\n'));
+          }
+
+          const createdRefundRequest = await Refund.create({
             order: order._id,
             user: order.user,
+            orderNumber: order.orderNumber,
+            customerName: customer?.name || 'Customer',
+            customerEmail: customer?.email || 'unknown@manielectrical.local',
+            customerPhone: customer?.phone || order.shippingAddress?.phone || 'N/A',
+            refundType: 'cancellation',
+            sourceReturnId: null,
+            productSummary: Array.isArray(order.items) && order.items[0]?.name
+              ? order.items[0].name
+              : null,
+            paymentMethod: order.paymentMethod,
+            paymentStatus: order.paymentStatus,
+            refundStatus: 'pending',
+            reason: finalCancelReason,
             amount: order.totalAmount,
-            reason: `Order cancelled by ${cancelledBy}. Reason: ${finalCancelReason}`,
-            refundStatus: 'processing',
-            adminNotes: optionalSupportMessage
-              ? `Auto-initiated refund after order cancellation. User message: ${optionalSupportMessage}`
-              : 'Auto-initiated refund after order cancellation'
+            adminNotes: customerMessageParts.join('\n\n') || null,
           });
 
-          // Persist refund state on payment record for transparency in user/admin flows.
-          await Payment.findOneAndUpdate(
-            { order: order._id },
-            { paymentStatus: 'refunded' }
-          );
+          const initialMessageLines = [
+            `Order cancelled: ${finalCancelReason}`,
+          ];
+          if (optionalSupportMessage) {
+            initialMessageLines.push(optionalSupportMessage);
+          }
+
+          await RefundMessage.create({
+            refundId: String(createdRefundRequest._id),
+            sender: 'USER',
+            message: initialMessageLines.join('\n\n'),
+          });
+
+          refundRequestCreated = true;
         }
       } catch (refundError) {
-        console.error('Auto refund creation error (non-fatal):', refundError.message);
+        console.error('Refund request creation error (non-fatal):', refundError.message);
       }
     }
 
@@ -607,8 +669,11 @@ exports.cancelOrder = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Order cancelled successfully',
-      order
+      message: isPaidOnlineOrder
+        ? 'Order cancelled. Refund request submitted for admin review.'
+        : 'Order cancelled successfully',
+      order,
+      refundRequestCreated,
     });
   } catch (error) {
     res.status(500).json({

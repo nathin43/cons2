@@ -31,15 +31,8 @@ const returnSchema = new mongoose.Schema(
     },
     reason: {
       type: String,
-      enum: [
-        "defective",
-        "damaged",
-        "wrong-item",
-        "poor-quality",
-        "changed-mind",
-        "other",
-      ],
       required: true,
+      trim: true,
     },
     message: {
       type: String,
@@ -47,8 +40,20 @@ const returnSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["easy-return"],
+      enum: ["easy-return", "order-cancellation-refund"],
       default: "easy-return",
+    },
+    paymentStatus: {
+      type: String,
+      default: null,
+    },
+    paymentMethod: {
+      type: String,
+      default: null,
+    },
+    amount: {
+      type: Number,
+      default: null,
     },
     status: {
       type: String,

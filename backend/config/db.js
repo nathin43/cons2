@@ -21,7 +21,8 @@ const connectDB = async (maxRetries = 5) => {
       };
 
       console.log('🔄 Attempting to connect to MongoDB...');
-      const conn = await mongoose.connect(process.env.MONGO_URI, options);
+      const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+      const conn = await mongoose.connect(uri, options);
 
       console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
       console.log(`📊 Database Name: ${conn.connection.name}`);

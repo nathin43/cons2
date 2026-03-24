@@ -14,7 +14,6 @@ let warnings = [];
 
 // Check environment variables
 const requiredEnv = [
-  'MONGO_URI',
   'JWT_SECRET',
   'PORT'
 ];
@@ -28,6 +27,13 @@ const optionalEnv = [
 ];
 
 console.log('📋 Checking Environment Variables...');
+const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+if (!mongoUri) {
+  errors.push('❌ Missing required: MONGO_URI (or legacy MONGODB_URI)');
+} else {
+  console.log('✅ MONGO_URI is set');
+}
+
 requiredEnv.forEach(env => {
   if (!process.env[env]) {
     errors.push(`❌ Missing required: ${env}`);
@@ -43,13 +49,13 @@ optionalEnv.forEach(env => {
 });
 
 // Check MongoDB URI format
-if (process.env.MONGO_URI) {
-  if (!process.env.MONGO_URI.includes('mongodb')) {
+if (mongoUri) {
+  if (!mongoUri.includes('mongodb')) {
     errors.push('❌ MONGO_URI does not look valid (should contain "mongodb")');
-  } else if (process.env.MONGO_URI.includes('YOUR_NEW_PASSWORD') || 
-             process.env.MONGO_URI.includes('YOUR_PASSWORD') ||
-             process.env.MONGO_URI.includes('CHANGE_THIS') ||
-             process.env.MONGO_URI.includes('REPLACE_THIS')) {
+  } else if (mongoUri.includes('YOUR_NEW_PASSWORD') || 
+             mongoUri.includes('YOUR_PASSWORD') ||
+             mongoUri.includes('CHANGE_THIS') ||
+             mongoUri.includes('REPLACE_THIS')) {
     errors.push('❌ MONGO_URI contains placeholder password! Update .env with your actual MongoDB password');
     errors.push('   📝 Instructions: Go to MongoDB Atlas → Database Access → Edit User → Reset Password');
   } else {

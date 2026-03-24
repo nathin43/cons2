@@ -17,11 +17,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3003,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 3003,
-    },
     // ⚠️  IMPORTANT: This frontend (port 3003) proxies API requests to the backend
     // ⚠️  The backend MUST be running on port 50004 before starting the frontend
     // Backend is configured in: backend/.env (PORT=50004)

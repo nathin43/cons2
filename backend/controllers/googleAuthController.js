@@ -42,7 +42,7 @@ exports.googleAuth = async (req, res) => {
         profileImage: picture || null,
         loginType: 'google',
         password: Math.random().toString(36).substring(2, 15), // Random password
-        phone: '0000000000', // Default phone since field is required
+        phone: '+910000000000', // Default in country-code format since field is required
         address: {
           street: '',
           city: '',

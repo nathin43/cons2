@@ -218,9 +218,6 @@
   gap: 60px;
   position: relative;
   z-index: 1;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 32px;
 }
 
 .hero-content {
@@ -638,7 +635,6 @@
   .hero-container {
     grid-template-columns: 1fr;
     gap: 40px;
-    padding: 0 24px;
   }
 
   .hero-product-card {
@@ -662,7 +658,6 @@
 
   .hero-container {
     gap: 30px;
-    padding: 0 20px;
   }
 
   .hero-title {

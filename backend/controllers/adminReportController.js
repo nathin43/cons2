@@ -942,6 +942,8 @@ exports.getOrderReport = async (req, res) => {
       .sort('-createdAt')
       .lean();
 
+    const safeOrders = Array.isArray(orders) ? orders : [];
+
     // Calculate summary
     const statusCounts = {
       pending: 0,
@@ -952,8 +954,8 @@ exports.getOrderReport = async (req, res) => {
       cancelled: 0
     };
 
-    orders.forEach(order => {
-      const status = (order.orderStatus || 'pending').toLowerCase();
+    safeOrders.forEach((order) => {
+      const status = String(order?.orderStatus || 'pending').toLowerCase();
       if (statusCounts.hasOwnProperty(status)) {
         statusCounts[status]++;
       } else if (['processing', 'shipped', 'confirmed'].includes(status)) {
@@ -962,139 +964,47 @@ exports.getOrderReport = async (req, res) => {
     });
 
     const summary = {
-      totalOrders: orders.length,
+      totalOrders: safeOrders.length,
       ...statusCounts
     };
 
-    const reportData = orders.map(order => ({
-      _id: order._id,
-      orderNumber: order.orderNumber,
-      orderId: order.orderNumber || order._id.toString().slice(-8).toUpperCase(),
-      user: order.user,
-      totalAmount: order.totalAmount,
-      status: order.orderStatus,
-      orderStatus: order.orderStatus,
-      paymentMethod: order.paymentMethod,
-      paymentStatus: order.paymentStatus,
-      createdAt: order.createdAt,
-      items: order.items,
-      shippingAddress: order.shippingAddress
-    }));
+    const reportData = safeOrders.map((order) => {
+      const orderIdRaw = order?._id ? String(order._id) : '';
+      const fallbackOrderId = orderIdRaw ? orderIdRaw.slice(-8).toUpperCase() : 'N/A';
 
-    const movementRange = range === 'daily' ? 'monthly' : range;
-    const movementWindow = getRangeWindow(movementRange, dateFrom, dateTo);
-    const productIdSet = new Set(products.map((product) => String(product._id)));
-
-    const buildMovementBuckets = () => {
-      if (movementRange === 'yearly') {
-        return Array.from({ length: 12 }, (_, monthIndex) => {
-          const start = new Date(movementWindow.from.getFullYear(), monthIndex, 1, 0, 0, 0, 0);
-          const end = new Date(movementWindow.from.getFullYear(), monthIndex + 1, 0, 23, 59, 59, 999);
-          return {
-            label: MONTH_LABELS[monthIndex],
-            start,
-            end,
-          };
-        });
-      }
-
-      const totalDays = Math.max(
-        1,
-        Math.ceil((movementWindow.to.getTime() - movementWindow.from.getTime()) / (24 * 60 * 60 * 1000)) + 1
-      );
-      const bucketSize = Math.max(1, Math.ceil(totalDays / 4));
-
-      return Array.from({ length: 4 }, (_, index) => {
-        const start = new Date(movementWindow.from);
-        start.setDate(movementWindow.from.getDate() + index * bucketSize);
-
-        const end = new Date(start);
-        end.setDate(start.getDate() + bucketSize - 1);
-        if (end > movementWindow.to) {
-          end.setTime(movementWindow.to.getTime());
-        }
-        end.setHours(23, 59, 59, 999);
-
-        return {
-          label: `Week ${index + 1}`,
-          start,
-          end,
-        };
-      });
-    };
-
-    const movementBuckets = buildMovementBuckets();
-
-    const findBucketIndex = (value) => {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return -1;
-      return movementBuckets.findIndex((bucket) => date >= bucket.start && date <= bucket.end);
-    };
-
-    const ordersForMovement = await Order.find({
-      createdAt: {
-        $gte: movementWindow.from,
-        $lte: movementWindow.to,
-      },
-      orderStatus: { $nin: ['cancelled', 'Cancelled'] },
-    })
-      .select('createdAt items.product items.quantity')
-      .lean();
-
-    const openingStock = new Array(movementBuckets.length).fill(0);
-    const addedStock = new Array(movementBuckets.length).fill(0);
-    const soldStock = new Array(movementBuckets.length).fill(0);
-    const closingStock = new Array(movementBuckets.length).fill(0);
-
-    products.forEach((product) => {
-      const index = findBucketIndex(product.createdAt);
-      if (index >= 0) {
-        addedStock[index] += Number(product.stock || 0);
-      }
+      return {
+        _id: order?._id || null,
+        orderNumber: order?.orderNumber || '',
+        orderId: order?.orderNumber || fallbackOrderId,
+        user: order?.user || null,
+        totalAmount: Number(order?.totalAmount || 0),
+        status: order?.orderStatus || 'pending',
+        orderStatus: order?.orderStatus || 'pending',
+        paymentMethod: order?.paymentMethod || 'N/A',
+        paymentStatus: order?.paymentStatus || 'pending',
+        createdAt: order?.createdAt || null,
+        items: Array.isArray(order?.items) ? order.items : [],
+        shippingAddress: order?.shippingAddress || null,
+      };
     });
 
-    ordersForMovement.forEach((order) => {
-      const index = findBucketIndex(order.createdAt);
-      if (index < 0) return;
-
-      (order.items || []).forEach((item) => {
-        const rawProductId = item?.product?._id || item?.product;
-        const productId = rawProductId ? String(rawProductId) : '';
-        if (!productIdSet.has(productId)) return;
-        soldStock[index] += Number(item?.quantity || 0);
+    let chart;
+    try {
+      chart = buildGroupedChartData(reportData, {
+        range,
+        dateFrom,
+        dateTo,
+        getDate: (item) => item.createdAt,
+        getValue: () => 1,
       });
-    });
-
-    const currentTotalStock = products.reduce((sum, product) => sum + Number(product.stock || 0), 0);
-    const totalAddedStock = addedStock.reduce((sum, value) => sum + value, 0);
-    const totalSoldStock = soldStock.reduce((sum, value) => sum + value, 0);
-
-    let rollingOpening = Math.max(0, currentTotalStock + totalSoldStock - totalAddedStock);
-    for (let i = 0; i < movementBuckets.length; i += 1) {
-      openingStock[i] = Number(rollingOpening.toFixed(2));
-      const nextClosing = Math.max(0, rollingOpening + addedStock[i] - soldStock[i]);
-      closingStock[i] = Number(nextClosing.toFixed(2));
-      rollingOpening = nextClosing;
-      addedStock[i] = Number(addedStock[i].toFixed(2));
-      soldStock[i] = Number(soldStock[i].toFixed(2));
+    } catch (chartError) {
+      console.error('Order report chart generation error:', chartError.message);
+      chart = {
+        range,
+        labels: [],
+        data: [],
+      };
     }
-
-    const chart = {
-      range: movementRange,
-      labels: movementBuckets.map((bucket) => bucket.label),
-      openingStock,
-      addedStock,
-      soldStock,
-      closingStock,
-      data: closingStock,
-    };
-
-    summary.stockMovement = {
-      openingStock: openingStock[0] || 0,
-      addedStock: totalAddedStock,
-      soldStock: totalSoldStock,
-      closingStock: closingStock[closingStock.length - 1] || currentTotalStock,
-    };
 
     // Auto-save report to database
     try {
@@ -1119,8 +1029,10 @@ exports.getOrderReport = async (req, res) => {
     console.error('Error fetching order report:', error);
     res.status(500).json({
       success: false,
+      code: 'ORDER_REPORT_FETCH_FAILED',
       message: 'Failed to fetch order report',
-      error: error.message
+      error: error?.message || 'Unknown error',
+      timestamp: new Date().toISOString()
     });
   }
 };

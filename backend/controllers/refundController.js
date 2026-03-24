@@ -1,9 +1,18 @@
 const Refund = require('../models/Refund');
 const Order = require('../models/Order');
 const Payment = require('../models/Payment');
+const User = require('../models/User');
+const RefundMessage = require('../models/RefundMessage');
 const NotificationService = require('../services/notificationService');
 const UserNotificationService = require('../services/userNotificationService');
 const Admin = require('../models/Admin');
+
+const normalizeRefundStatus = (status) => {
+  const raw = String(status || '').toLowerCase();
+  if (raw === 'approved' || raw === 'completed') return 'approved';
+  if (raw === 'rejected') return 'rejected';
+  return 'pending';
+};
 
 /**
  * Create refund request (User)
@@ -38,6 +47,16 @@ exports.createRefund = async (req, res) => {
     const refund = await Refund.create({
       order: orderId,
       user: req.user.id,
+      orderNumber: order.orderNumber,
+      customerName: req.user.name,
+      customerEmail: req.user.email,
+      customerPhone: req.user.phone || null,
+      refundType: 'return-refund',
+      productSummary: Array.isArray(order.items) && order.items[0]?.name
+        ? order.items[0].name
+        : null,
+      paymentMethod: order.paymentMethod || null,
+      paymentStatus: order.paymentStatus || null,
       amount: order.totalAmount,
       reason,
     });
@@ -80,17 +99,60 @@ exports.createRefund = async (req, res) => {
  */
 exports.getAllRefunds = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, type } = req.query;
     const query = {};
     if (status && status !== 'all') query.refundStatus = status;
+    if (type && type !== 'all') query.refundType = type;
 
     const refunds = await Refund.find(query)
       .populate('user', 'name email phone')
-      .populate('order', 'orderNumber totalAmount orderStatus')
+      .populate('order', 'orderNumber totalAmount orderStatus paymentMethod paymentStatus items')
       .populate('processedBy', 'name')
-      .sort('-createdAt');
+      .sort('-createdAt')
+      .lean();
 
-    res.status(200).json({ success: true, count: refunds.length, refunds });
+    const refundIds = refunds.map((entry) => String(entry._id));
+    const lastMessageByRefundId = new Map();
+    if (refundIds.length > 0) {
+      const allMessages = await RefundMessage.find({ refundId: { $in: refundIds } })
+        .sort({ createdAt: 1 })
+        .lean();
+      allMessages.forEach((message) => {
+        lastMessageByRefundId.set(String(message.refundId || ''), message);
+      });
+    }
+
+    const formattedRefunds = refunds.map((entry) => {
+      const orderNumber = entry.orderNumber || entry.order?.orderNumber || null;
+      const customerName = entry.customerName || entry.user?.name || 'Customer';
+      const customerEmail = entry.customerEmail || entry.user?.email || null;
+      const typeLabel = entry.refundType === 'cancellation' ? 'Cancellation' : 'Return Refund';
+      const lastMessage = lastMessageByRefundId.get(String(entry._id));
+      const firstProductName = Array.isArray(entry.order?.items) && entry.order.items[0]?.name
+        ? entry.order.items[0].name
+        : null;
+
+      return {
+        ...entry,
+        refundId: String(entry._id),
+        orderId: orderNumber,
+        customerName,
+        customerEmail,
+        customerPhone: entry.customerPhone || entry.user?.phone || null,
+        typeLabel,
+        product: entry.productSummary || firstProductName || 'N/A',
+        paymentMethod: entry.paymentMethod || entry.order?.paymentMethod || null,
+        paymentStatus: entry.paymentStatus || entry.order?.paymentStatus || null,
+        amount: typeof entry.amount === 'number' ? entry.amount : (entry.order?.totalAmount || 0),
+        refundStatus: normalizeRefundStatus(entry.refundStatus),
+        status: normalizeRefundStatus(entry.refundStatus),
+        lastMessage: lastMessage?.message || null,
+        lastMessageSender: lastMessage?.sender || null,
+        lastMessageAt: lastMessage?.createdAt || null,
+      };
+    });
+
+    res.status(200).json({ success: true, count: formattedRefunds.length, refunds: formattedRefunds });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -124,6 +186,14 @@ exports.getRefundById = async (req, res) => {
 exports.updateRefundStatus = async (req, res) => {
   try {
     const { refundStatus, adminNotes } = req.body;
+
+    const allowedStatuses = ['pending', 'approved', 'rejected'];
+    if (!allowedStatuses.includes(refundStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid refund status. Allowed: pending, approved, rejected.',
+      });
+    }
 
     const refund = await Refund.findById(req.params.id);
     if (!refund) {
@@ -176,9 +246,39 @@ exports.getMyRefunds = async (req, res) => {
   try {
     const refunds = await Refund.find({ user: req.user.id })
       .populate('order', 'orderNumber totalAmount orderStatus')
-      .sort('-createdAt');
+      .sort('-createdAt')
+      .lean();
 
-    res.status(200).json({ success: true, count: refunds.length, refunds });
+    const refundIds = refunds.map((entry) => String(entry._id));
+    const messageBuckets = new Map();
+
+    if (refundIds.length > 0) {
+      const messages = await RefundMessage.find({ refundId: { $in: refundIds } })
+        .sort({ createdAt: 1 })
+        .lean();
+      messages.forEach((message) => {
+        const key = String(message.refundId || '');
+        if (!messageBuckets.has(key)) messageBuckets.set(key, []);
+        messageBuckets.get(key).push(message);
+      });
+    }
+
+    const formattedRefunds = refunds.map((entry) => {
+      const messages = messageBuckets.get(String(entry._id)) || [];
+      const latest = messages.length > 0 ? messages[messages.length - 1] : null;
+      return {
+        ...entry,
+        refundId: String(entry._id),
+        orderId: entry.orderNumber || entry.order?.orderNumber || null,
+        refundStatus: normalizeRefundStatus(entry.refundStatus),
+        messages,
+        lastMessage: latest?.message || null,
+        lastMessageSender: latest?.sender || null,
+        lastMessageAt: latest?.createdAt || null,
+      };
+    });
+
+    res.status(200).json({ success: true, count: formattedRefunds.length, refunds: formattedRefunds });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -212,5 +312,132 @@ exports.getRefundStats = async (req, res) => {
     res.status(200).json({ success: true, stats });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getRefundForUser = async (refundId, userId) => {
+  const user = await User.findById(userId).select('email').lean();
+  if (!user) return null;
+
+  const refund = await Refund.findById(refundId)
+    .populate('user', 'email')
+    .lean();
+  if (!refund) return null;
+
+  const byUserId = refund.user && String(refund.user._id || refund.user) === String(userId);
+  const byEmail = String(refund.customerEmail || '').toLowerCase() === String(user.email || '').toLowerCase();
+  return (byUserId || byEmail) ? refund : null;
+};
+
+/**
+ * Get refund chat messages for admin
+ * GET /api/refunds/:id/messages/admin
+ */
+exports.getRefundMessagesAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const refund = await Refund.findById(id).lean();
+    if (!refund) {
+      return res.status(404).json({ success: false, message: 'Refund request not found.' });
+    }
+
+    const messages = await RefundMessage.find({ refundId: id }).sort({ createdAt: 1 }).lean();
+    return res.status(200).json({ success: true, refund, messages, status: normalizeRefundStatus(refund.refundStatus) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Get refund chat messages for user
+ * GET /api/refunds/:id/messages
+ */
+exports.getRefundMessagesUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const refund = await getRefundForUser(id, req.user.id);
+    if (!refund) {
+      return res.status(404).json({ success: false, message: 'Refund conversation not found.' });
+    }
+
+    const messages = await RefundMessage.find({ refundId: id }).sort({ createdAt: 1 }).lean();
+    return res.status(200).json({ success: true, refund, messages, status: normalizeRefundStatus(refund.refundStatus) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Admin sends chat message in refund conversation
+ * POST /api/refunds/:id/messages/admin
+ */
+exports.addRefundMessageAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message, newStatus } = req.body || {};
+    const trimmed = String(message || '').trim();
+
+    if (!trimmed) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty.' });
+    }
+
+    const refund = await Refund.findById(id);
+    if (!refund) {
+      return res.status(404).json({ success: false, message: 'Refund request not found.' });
+    }
+
+    const chatMessage = await RefundMessage.create({
+      refundId: id,
+      sender: 'ADMIN',
+      message: trimmed,
+    });
+
+    if (newStatus && ['pending', 'approved', 'rejected'].includes(newStatus)) {
+      refund.refundStatus = newStatus;
+    }
+    refund.adminNotes = trimmed;
+    refund.processedBy = req.admin._id || req.admin.id;
+    refund.processedAt = new Date();
+    await refund.save();
+
+    return res.status(201).json({
+      success: true,
+      chatMessage,
+      status: normalizeRefundStatus(refund.refundStatus),
+      message: 'Reply sent successfully.',
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * User sends chat message in refund conversation
+ * POST /api/refunds/:id/messages
+ */
+exports.addRefundMessageUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body || {};
+    const trimmed = String(message || '').trim();
+
+    if (!trimmed) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty.' });
+    }
+
+    const refund = await getRefundForUser(id, req.user.id);
+    if (!refund) {
+      return res.status(404).json({ success: false, message: 'Refund conversation not found.' });
+    }
+
+    const chatMessage = await RefundMessage.create({
+      refundId: id,
+      sender: 'USER',
+      message: trimmed,
+    });
+
+    return res.status(201).json({ success: true, chatMessage });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

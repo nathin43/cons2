@@ -6,6 +6,7 @@ import './index.css'
 import { AuthProvider } from './context/AuthProvider.jsx'
 import { CartProvider } from './context/CartProvider.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
+import { LoadingProvider } from './context/LoadingContext.jsx'
 
 /**
  * Create router with future flags enabled for React Router v7 compatibility
@@ -27,7 +28,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ToastProvider>
       <AuthProvider>
         <CartProvider>
-          <RouterProvider router={router} />
+          <LoadingProvider>
+            <RouterProvider router={router} />
+          </LoadingProvider>
         </CartProvider>
       </AuthProvider>
     </ToastProvider>

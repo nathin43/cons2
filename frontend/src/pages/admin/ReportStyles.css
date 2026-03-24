@@ -90,9 +90,11 @@
 .report-chart-box {
   position: relative;
   background: #ffffff;
+  border: 1px solid #eef2f7;
   border-radius: 12px;
   min-height: 360px;
   padding: 20px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
   box-sizing: border-box;
   overflow: visible;
 }
@@ -104,12 +106,12 @@
 }
 
 .report-chart-wrap.compact {
-  height: 360px;
+  height: 330px;
 }
 
 .chart-wrapper {
   width: 100%;
-  height: 360px;
+  height: 330px;
   overflow: visible;
 }
 
@@ -138,44 +140,48 @@
 }
 
 .report-chart-item {
-  padding: 10px;
-  border: 1px solid #e8eef7;
+  padding: 12px;
+  border: 1px solid #eaf0f8;
   border-radius: 14px;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   min-height: 380px;
   overflow: visible;
 }
 
 .modern-chart-card {
-  padding: 16px;
+  padding: 20px;
   max-height: none;
   min-height: 380px;
   overflow: visible;
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
 }
 
 .modern-chart-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  border-color: #d7e4fb;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12);
 }
 
 .report-chart-subtitle {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: #475569;
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #334155;
   font-weight: 700;
 }
 
 .report-chart-description {
   margin: 0 0 10px;
-  color: #64748b;
+  color: #6b7280;
   font-size: 12px;
   line-height: 1.4;
 }
 
 .report-chart-overlay {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -184,9 +190,13 @@
 }
 
 .report-chart-overlay__text {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 12px;
 }
 
 .report-legend-row {
@@ -194,16 +204,17 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  margin-top: 8px;
+  margin-top: 10px;
+  min-height: 24px;
 }
 
 .report-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #64748b;
+  color: #475569;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .report-legend-dot {
@@ -217,8 +228,8 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
-  padding: 8px 10px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+  padding: 9px 12px;
 }
 
 .report-chart-tooltip__label {
@@ -233,6 +244,17 @@
   color: #0f172a;
   font-size: 12px;
   font-weight: 600;
+}
+
+.modern-chart-bar .recharts-rectangle {
+  transition: transform 180ms ease, opacity 180ms ease;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.modern-chart-bar .recharts-rectangle:hover {
+  transform: scale(1.02);
+  opacity: 0.95;
 }
 
 .report-chart-tooltip__dot {
@@ -525,6 +547,13 @@
   box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
 }
 
+.period-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .period-nav-current {
   min-width: 160px;
   text-align: center;
@@ -563,6 +592,145 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.sales-last-updated {
+  margin-top: -8px;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.report-inline-error {
+  margin-top: 6px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sales-state-animated {
+  animation: salesStateIn 260ms ease-out;
+  transform-origin: center;
+}
+
+@keyframes salesStateIn {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.sales-today-state {
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sales-today-empty-card {
+  width: min(100%, 520px);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  padding: 34px 26px;
+  text-align: center;
+}
+
+.sales-today-empty-card h3 {
+  margin: 14px 0 8px;
+  color: #1e293b;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.sales-today-empty-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sales-today-empty-card.is-error {
+  border-color: #fecaca;
+  background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
+}
+
+.sales-today-empty-icon {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sales-today-empty-card.is-error .sales-today-empty-icon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sales-today-skeleton-card {
+  width: min(100%, 760px);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  padding: 24px;
+}
+
+.sales-today-skeleton-line,
+.sales-today-skeleton-box {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #edf2f7 20%, #e2e8f0 40%, #edf2f7 60%);
+  background-size: 200% 100%;
+  animation: salesShimmer 1.25s linear infinite;
+}
+
+.sales-today-skeleton-line {
+  height: 18px;
+  margin-bottom: 12px;
+}
+
+.sales-today-skeleton-line.short {
+  width: 24%;
+}
+
+.sales-today-skeleton-line.medium {
+  width: 48%;
+  margin-bottom: 20px;
+}
+
+.sales-today-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.sales-today-skeleton-box {
+  height: 96px;
+}
+
+@keyframes salesShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .btn-toggle-filters {
@@ -1010,6 +1178,28 @@
     flex-wrap: wrap;
   }
 
+  .sales-last-updated {
+    margin-top: 2px;
+    text-align: left;
+  }
+
+  .sales-today-empty-card {
+    padding: 26px 18px;
+  }
+
+  .sales-today-empty-card h3 {
+    font-size: 20px;
+  }
+
+  .sales-today-skeleton-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sales-today-skeleton-line.short,
+  .sales-today-skeleton-line.medium {
+    width: 100%;
+  }
+
   .stock-movement-summary {
     grid-template-columns: 1fr;
   }
@@ -1026,6 +1216,11 @@
   }
 
   .report-chart-wrap {
+    height: 300px;
+  }
+
+  .report-chart-wrap.compact,
+  .chart-wrapper {
     height: 300px;
   }
 

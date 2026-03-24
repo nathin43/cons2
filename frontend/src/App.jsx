@@ -1,6 +1,8 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import ToastContainer from './components/ToastContainer';
 import SupportWidget from './components/SupportWidget';
+import LoadingOverlay from './components/LoadingOverlay';
+import { useLoading } from './context/LoadingContext';
 
 // Customer Pages
 import Home from './pages/customer/Home';
@@ -55,9 +57,11 @@ import MainAdminRoute from './components/MainAdminRoute';
 function App() {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
+  const { visible, message } = useLoading();
 
   return (
     <>
+      <LoadingOverlay visible={visible} message={message} />
       <ToastContainer />
       {!isAdminPage && <SupportWidget />}
       <Routes>

@@ -87,8 +87,15 @@ exports.adminProtect = async (req, res, next) => {
       });
     }
 
-    // Use role from database; fall back to JWT claim only if DB field is somehow missing
-    req.admin.role = req.admin.role || decoded.role || 'SUB_ADMIN';
+    // Enforce role from database only; reject malformed admin records.
+    if (!req.admin.role) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin role is missing. Contact MAIN_ADMIN.'
+      });
+    }
+
+    req.admin.role = req.admin.role;
 
     next();
   } catch (error) {

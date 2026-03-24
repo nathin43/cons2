@@ -1,6 +1,29 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const normalizePhone = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return raw;
+
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+
+  let local = digits;
+  if (local.startsWith('91')) {
+    local = local.slice(2);
+  }
+
+  if (local.length > 10) {
+    local = local.slice(-10);
+  }
+
+  if (local.length === 10) {
+    return `+91${local}`;
+  }
+
+  return raw;
+};
+
 /**
  * User Schema for Customer accounts
  * Stores customer information and authentication data
@@ -26,7 +49,13 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: [true, 'Please provide a phone number']
+    required: [true, 'Please provide a phone number'],
+    trim: true,
+    set: normalizePhone,
+    validate: {
+      validator: (value) => /^\+91\d{10}$/.test(String(value || '')),
+      message: 'Phone number must be in +91XXXXXXXXXX format',
+    }
   },
   profileImage: {
     type: String,

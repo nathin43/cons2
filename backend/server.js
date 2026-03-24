@@ -17,7 +17,14 @@ process.on('uncaughtException', (error) => {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
   console.error(`[${timestamp}] [CRITICAL] Uncaught Exception:`, error.message);
   console.error(error.stack);
-  // Exit process after logging
+
+  // In development, keep the process alive so nodemon does not get stuck in crash loops.
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(`[${timestamp}] [SERVER] Continuing after uncaught exception in development mode`);
+    return;
+  }
+
+  // Exit process after logging in non-development environments.
   process.exit(1);
 });
 
@@ -29,32 +36,64 @@ process.on('unhandledRejection', (reason, promise) => {
   // Don't exit - continue running but log the issue
 });
 
-// Handle graceful shutdown
-process.on('SIGTERM', () => {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log(`[${timestamp}] [SERVER] SIGTERM signal received: closing HTTP server`);
-  if (global.httpServer) {
-    global.httpServer.close(() => {
-      console.log(`[${timestamp}] [SERVER] HTTP server closed`);
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
-});
+let isShuttingDown = false;
+const gracefulShutdown = (signal, onDone) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-// Handle interrupt signal
-process.on('SIGINT', () => {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log(`[${timestamp}] [SERVER] SIGINT signal received: closing HTTP server`);
-  if (global.httpServer) {
-    global.httpServer.close(() => {
-      console.log(`[${timestamp}] [SERVER] HTTP server closed`);
+  console.log(`[${timestamp}] [SERVER] ${signal} signal received: shutting down`);
+
+  // Prevent hanging forever during nodemon restarts.
+  const forceExitTimer = setTimeout(() => {
+    const ts = new Date().toISOString().split('T')[1].split('.')[0];
+    console.warn(`[${ts}] [SERVER] Forced shutdown timeout reached`);
+    if (typeof onDone === 'function') {
+      onDone();
+    } else {
       process.exit(0);
+    }
+  }, 3000);
+
+  const done = () => {
+    clearTimeout(forceExitTimer);
+    if (typeof onDone === 'function') {
+      onDone();
+    } else {
+      process.exit(0);
+    }
+  };
+
+  const closeHttpServer = () => {
+    if (global.httpServer) {
+      global.httpServer.close(() => {
+        const ts = new Date().toISOString().split('T')[1].split('.')[0];
+        console.log(`[${ts}] [SERVER] HTTP server closed`);
+        done();
+      });
+    } else {
+      done();
+    }
+  };
+
+  if (global.io) {
+    global.io.close(() => {
+      const ts = new Date().toISOString().split('T')[1].split('.')[0];
+      console.log(`[${ts}] [SERVER] Socket.IO server closed`);
+      closeHttpServer();
     });
   } else {
-    process.exit(0);
+    closeHttpServer();
   }
+};
+
+// Handle process termination and Ctrl+C.
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Nodemon uses SIGUSR2 for restarts; acknowledge and re-emit when cleanly closed.
+process.once('SIGUSR2', () => {
+  gracefulShutdown('SIGUSR2', () => process.kill(process.pid, 'SIGUSR2'));
 });
 
 
@@ -63,22 +102,28 @@ const app = express();
 
 // Create HTTP server
 const httpServer = http.createServer(app);
+global.httpServer = httpServer;
 
-// CORS Configuration - Production Ready
+// CORS Configuration
 const allowedOrigins = [
   'https://manielectrical.vercel.app',
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://localhost:3003'
+  'https://www.manielectrical.vercel.app',
 ];
+
+const isLocalDevOrigin = (origin = '') =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(String(origin || '').trim());
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (isLocalDevOrigin(origin)) return true;
+  return allowedOrigins.includes(origin);
+};
 
 // Initialize Socket.IO with CORS
 const io = new Server(httpServer, {
   cors: {
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -91,15 +136,17 @@ const io = new Server(httpServer, {
 
 // Make io accessible to route controllers via req.app.get('io')
 app.set('io', io);
+global.io = io;
 
 // CORS Middleware
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        // Avoid converting CORS blocks into 500 responses.
+        callback(null, false);
       }
     },
     credentials: true,
@@ -313,10 +360,10 @@ app.get('/api/health', (req, res) => {
 
 // Connect to MongoDB with improved error handling
 const mongoose = require('mongoose');
-const mongoURI = process.env.MONGO_URI;
+const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
 if (!mongoURI) {
-  console.error('❌ MONGO_URI environment variable is not defined');
+  console.error('❌ MONGO_URI (or legacy MONGODB_URI) environment variable is not defined');
   process.exit(1);
 }
 
@@ -361,6 +408,13 @@ const connectWithRetry = (retries = 5, delay = 5000) => {
       } catch (seedErr) {
         console.error('⚠️  Category auto-seed failed (non-fatal):', seedErr.message);
       }
+
+      // Start listening only after DB is ready
+      httpServer.listen(PORT, '0.0.0.0', () => {
+        const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+        console.log(`[${timestamp}] [SERVER] Running on port ${PORT}`);
+        console.log(`[${timestamp}] [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+      });
     })
     .catch(err => {
       console.error('\n❌ MongoDB Connection Error:', err.message);
@@ -390,13 +444,8 @@ const connectWithRetry = (retries = 5, delay = 5000) => {
     });
 };
 
-connectWithRetry();
-
 // Start Server
 const PORT = process.env.PORT || 5000;
-
-// Store server in global scope for graceful shutdown
-global.httpServer = httpServer;
 
 httpServer.on('error', (err) => {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
@@ -411,15 +460,5 @@ httpServer.on('error', (err) => {
   }
 });
 
-try {
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-    console.log(`[${timestamp}] [SERVER] Running on port ${PORT}`);
-    console.log(`[${timestamp}] [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
-} catch (error) {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.error(`[${timestamp}] [CRITICAL] Failed to start server:`, error.message);
-  process.exit(1);
-}
+connectWithRetry();
 
