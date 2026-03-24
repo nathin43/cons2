@@ -59,6 +59,7 @@ const Cart = () => {
   const [updatingItems, setUpdatingItems] = useState(new Set());
   const [removingItems, setRemovingItems] = useState(new Set());
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
   /* ── Derived values (computed before any early return so hook count stays constant) ── */
   const items         = cart?.items || [];
@@ -125,6 +126,7 @@ const Cart = () => {
 
   const handleCheckout = () => {
     if (selectedCount === 0) { info('Please select at least one item to proceed'); return; }
+    setOrderSuccess(false);
     setIsCheckoutModalOpen(true);
   };
 
@@ -132,9 +134,41 @@ const Cart = () => {
     setIsCheckoutModalOpen(false);
   };
 
+  const handleOrderSuccess = () => {
+    setOrderSuccess(true);
+    setSelectedItems(new Set());
+  };
+
   const getSelectedItemsData = () => {
     return items.filter(item => selectedItems.has(item.product._id));
   };
+
+  if (orderSuccess) return (
+    <>
+      <Navbar />
+      <div className="cart-page">
+        <div className="cart-container">
+          <div className="cart-empty">
+            <h2>Order confirmed</h2>
+            <p>Your order has been placed successfully.</p>
+          </div>
+        </div>
+      </div>
+
+      <Footer />
+
+      <CheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={handleCloseCheckoutModal}
+        selectedItems={getSelectedItemsData()}
+        subtotal={selectedSubtotal}
+        gst={selectedGST}
+        shipping={selectedShipping}
+        total={finalTotal}
+        onOrderSuccess={handleOrderSuccess}
+      />
+    </>
+  );
 
   /* ════════════════ LOADING ════════════════ */
   if (loading) return (
@@ -418,6 +452,7 @@ const Cart = () => {
         gst={selectedGST}
         shipping={selectedShipping}
         total={finalTotal}
+        onOrderSuccess={handleOrderSuccess}
       />
     </>
   );

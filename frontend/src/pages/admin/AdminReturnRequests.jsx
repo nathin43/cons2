@@ -128,7 +128,7 @@ const AdminReturnRequests = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <DashboardSkeleton />
+        <DashboardSkeleton text="Loading Return Requests..." />
       </AdminLayout>
     );
   }

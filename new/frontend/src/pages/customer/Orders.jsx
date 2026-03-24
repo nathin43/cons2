@@ -84,6 +84,22 @@ const Orders = () => {
   }, []);
 
   const fetchOrders = async () => {
+    const activeUserToken =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('userToken') ||
+      sessionStorage.getItem('userToken');
+
+    if (!activeUserToken) {
+      setError('Please login to view your orders.');
+      setOrders([]);
+      setRefundMap({});
+      setLoading(false);
+      hideLoader();
+      navigate('/login', { replace: true });
+      return;
+    }
+
     showLoader('Loading your orders…');
     try {
       setError('');

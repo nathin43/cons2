@@ -128,7 +128,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <DashboardSkeleton />
+        <DashboardSkeleton text="Loading Dashboard..." />
       </AdminLayout>
     );
   }

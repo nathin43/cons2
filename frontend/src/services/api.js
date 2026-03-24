@@ -2,19 +2,28 @@ import axios from 'axios';
 
 /**
  * API Service Configuration
- * Base configuration for all API calls
- * Uses dynamic port detection for development environments
+ * Handles both local development and production deployment
+ * 
+ * Local Dev (localhost:3003):
+ *   - Uses Vite proxy to http://127.0.0.1:50004
+ *   - Configured in: vite.config.js
+ * 
+ * Production (Vercel):
+ *   - Uses VITE_API_URL from .env.production
+ *   - Points to Render backend: https://manielectrical-backend.onrender.com
  */
 
 // Determine the backend URL based on environment
 const getBackendURL = () => {
-  // In development, use the current host and the Vite proxy
+  // In development, use the Vite proxy (local backend must be running)
   if (import.meta.env.DEV) {
-    // This will use the Vite proxy configured in vite.config.js
     return '/api';
   }
-  // In production, use the full URL
-  return `${import.meta.env.VITE_API_URL || 'https://manielectrical-backend.onrender.com'}/api`;
+  
+  // In production, use the environment variable (from .env.production)
+  // Falls back to default Render URL if env var is not set
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://manielectrical-backend.onrender.com';
+  return `${apiUrl}/api`;
 };
 
 const API = axios.create({
@@ -25,6 +34,30 @@ const API = axios.create({
   withCredentials: false,
   timeout: 30000  // 30 second timeout for requests
 });
+
+const getStoredAdminToken = () =>
+  localStorage.getItem('adminToken') ||
+  sessionStorage.getItem('adminToken') ||
+  localStorage.getItem('admintoken') ||
+  sessionStorage.getItem('admintoken');
+
+const getStoredUserToken = () =>
+  localStorage.getItem('token') ||
+  sessionStorage.getItem('token') ||
+  localStorage.getItem('userToken') ||
+  sessionStorage.getItem('userToken') ||
+  localStorage.getItem('usertoken') ||
+  sessionStorage.getItem('usertoken');
+
+const clearStoredUserAuth = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('usertoken');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('userToken');
+  sessionStorage.removeItem('usertoken');
+};
 
 const isReportAffectingWrite = (config = {}) => {
   const method = String(config.method || '').toLowerCase();
@@ -48,8 +81,8 @@ const isReportAffectingWrite = (config = {}) => {
 API.interceptors.request.use((config) => {
   // Determine which token to use based on the route
   let token = null;
-  const adminToken = localStorage.getItem('adminToken');
-  const userToken  = localStorage.getItem('token');
+  const adminToken = getStoredAdminToken();
+  const userToken = getStoredUserToken();
   const url = String(config.url || '');
   const method = String(config.method || '').toLowerCase();
   const isUserReturnsRoute =
@@ -162,8 +195,7 @@ API.interceptors.response.use(
       if (url.includes('logout')) {
         localStorage.removeItem('adminToken');
         localStorage.removeItem('admin');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        clearStoredUserAuth();
       }
       // Admin login failures — don't clear tokens, just log
       else if (url.includes('/auth/admin/login')) {
@@ -185,12 +217,11 @@ API.interceptors.response.use(
       // (prevents clearing a valid user token when an admin token was mistakenly sent).
       else if (status === 401) {
         const sentToken = error.config?.headers?.Authorization?.replace('Bearer ', '');
-        const userToken = localStorage.getItem('token');
+        const userToken = getStoredUserToken();
         // Only clear if the token that was sent matches the stored user token
         if (userToken && sentToken === userToken) {
           console.warn('Customer session expired or invalid, clearing token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          clearStoredUserAuth();
           window.dispatchEvent(new CustomEvent('auth:user-session-expired'));
         }
       }

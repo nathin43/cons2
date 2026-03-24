@@ -15,7 +15,9 @@ import './DashboardSkeleton.css';
  *   pulse        : 2s ease-in-out infinite
  *   bounce       : 1.4s ease-in-out infinite
  */
-const DashboardSkeleton = ({ title = 'Loading Dashboard' }) => {
+const DashboardSkeleton = ({ title, text }) => {
+  const loaderText = text || title || 'Loading...';
+
   // Prevent scroll inside content area while loading
   useEffect(() => {
     const contentArea = document.querySelector('.dash-content, .admin-page-content');
@@ -34,7 +36,7 @@ const DashboardSkeleton = ({ title = 'Loading Dashboard' }) => {
             <div className="dash-skeleton-spinner-circle"></div>
             <div className="dash-skeleton-spinner-inner"></div>
           </div>
-          <h3 className="dash-skeleton-title">{title}</h3>
+          <h3 className="dash-skeleton-title">{loaderText}</h3>
           <div className="dash-skeleton-dots">
             <span></span>
             <span></span>

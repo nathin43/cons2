@@ -25,9 +25,9 @@ const loadRazorpayScript = () =>
 const ORDERS_NAVIGATION_DELAY_MS = 1500;
 const CONFIRMATION_DELAY_MS = 1200;
 
-const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, shipping = 0, total = 0 }) => {
+const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, shipping = 0, total = 0, onOrderSuccess }) => {
   const navigate = useNavigate();
-  const { fetchCart } = useContext(CartContext);
+  const { clearCartStateImmediately } = useContext(CartContext);
   const { user } = useContext(AuthContext);
   const { error: showError } = useToast();
   const { showLoader, hideLoader } = useLoading();
@@ -93,10 +93,9 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
   });
   const [paymentRetryContext, setPaymentRetryContext] = useState(null);
   const [confirmationData, setConfirmationData] = useState(null);
+  const [orderSuccess, setOrderSuccess] = useState(false);
   const [ordersNavigationLoading, setOrdersNavigationLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
-  const [pincodeHint, setPincodeHint] = useState('Enter 6-digit pincode to auto-detect city and state.');
   const [deliveryEstimate, setDeliveryEstimate] = useState('Enter pincode to see delivery estimate');
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState('new');
@@ -123,10 +122,9 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
         setPaymentResult({ status: 'idle', message: '', details: null });
         setPaymentRetryContext(null);
         setConfirmationData(null);
+        setOrderSuccess(false);
         setOrdersNavigationLoading(false);
         setFieldErrors({});
-        setPincodeLookupLoading(false);
-        setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
         setDeliveryEstimate('Enter pincode to see delivery estimate');
         setLocationPreview(null);
         setLocationLoading(false);
@@ -170,9 +168,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     if (name === 'pincode') {
       nextValue = String(value).replace(/\D/g, '').slice(0, 6);
       setDeliveryEstimate(getDeliveryEstimate(nextValue));
-      if (String(nextValue).length < 6) {
-        setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
-      }
     }
 
     if (['name', 'phone', 'pincode', 'houseNo', 'area', 'city', 'state', 'addressType'].includes(name)) {
@@ -184,53 +179,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  useEffect(() => {
-    const pin = String(formData.pincode || '').trim();
-
-    if (!/^\d{6}$/.test(pin)) {
-      setPincodeLookupLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const timer = setTimeout(async () => {
-      setPincodeLookupLoading(true);
-      setPincodeHint('Detecting city and state from pincode...');
-
-      try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-        const data = await res.json();
-        const entry = Array.isArray(data) ? data[0] : null;
-        const office = entry?.PostOffice?.[0];
-
-        if (isCancelled) return;
-
-        if (entry?.Status === 'Success' && office) {
-          setFormData((prev) => ({
-            ...prev,
-            city: office.District || prev.city,
-            state: office.State || prev.state
-          }));
-          setPincodeHint('City and state auto-detected from pincode.');
-          setFieldErrors((prev) => ({ ...prev, pincode: '', city: '', state: '' }));
-        } else {
-          setPincodeHint('Could not auto-detect city/state. Please enter manually.');
-        }
-      } catch {
-        if (!isCancelled) {
-          setPincodeHint('Could not auto-detect city/state. Please enter manually.');
-        }
-      } finally {
-        if (!isCancelled) setPincodeLookupLoading(false);
-      }
-    }, 350);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-    };
-  }, [formData.pincode]);
-
   const handleSelectSavedAddress = (addressId) => {
     const selected = savedAddresses.find((address) => address.id === addressId);
     if (!selected) return;
@@ -238,7 +186,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     setSelectedSavedAddressId(addressId);
     setFormData(selected.data);
     setDeliveryEstimate(getDeliveryEstimate(selected.data.pincode));
-    setPincodeHint('Saved address selected. You can still edit any field.');
     setFieldErrors({});
   };
 
@@ -252,19 +199,16 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
       state: '',
       pincode: ''
     }));
-    setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
     setDeliveryEstimate('Enter pincode to see delivery estimate');
     setFieldErrors({});
   };
 
   const handleUseCurrentLocation = async () => {
     if (!navigator.geolocation) {
-      setPincodeHint('Location is not supported by this browser.');
       return;
     }
 
     setLocationLoading(true);
-    setPincodeHint('Fetching your current location...');
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -289,16 +233,14 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
 
           const normalizedPin = address.postcode ? String(address.postcode).replace(/\D/g, '').slice(0, 6) : formData.pincode;
           setDeliveryEstimate(getDeliveryEstimate(normalizedPin));
-          setPincodeHint('Location detected. Please verify city/state and address details.');
         } catch {
-          setPincodeHint('Location detected, but address details could not be fetched. Please fill manually.');
+          // Keep manual address flow when reverse geocoding fails.
         } finally {
           setLocationLoading(false);
         }
       },
       () => {
         setLocationLoading(false);
-        setPincodeHint('Unable to access your location.');
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
@@ -308,6 +250,10 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     if (!isOpen) return;
     if (paymentProcessing || checkoutStage === 'PROCESSING' || ordersNavigationLoading) return;
     if (e.target.classList.contains('checkout-modal-overlay')) {
+      if (currentStep === 4 && confirmationData) {
+        handleConfirmedModalClose();
+        return;
+      }
       onClose();
     }
   };
@@ -395,15 +341,42 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
     setCurrentStep(4);
   };
 
-  const closeConfirmationAndNavigate = async (path = '/products') => {
+  const navigateWithFallback = (primaryPath = '/orders', fallbackPath = '/') => {
+    try {
+      navigate(primaryPath, { replace: true });
+
+      // Fallback to home if primary route is unavailable.
+      window.setTimeout(() => {
+        if (window.location.pathname !== primaryPath) {
+          navigate(fallbackPath, { replace: true });
+        }
+      }, 220);
+    } catch {
+      navigate(fallbackPath, { replace: true });
+    }
+  };
+
+  const closeConfirmationAndNavigate = async (path = '/products', fallbackPath = '/') => {
     setOrdersNavigationLoading(false);
     hideLoader();
-    window.dispatchEvent(new CustomEvent('order-placed'));
-    await fetchCart();
     setConfirmationData(null);
     setCheckoutStage('FORM');
     onClose();
-    navigate(path, { replace: true });
+    navigateWithFallback(path, fallbackPath);
+  };
+
+  const handleOrderSuccess = (confirmationPayload) => {
+    setOrderSuccess(true);
+    clearCartStateImmediately?.();
+    localStorage.removeItem('cart');
+    sessionStorage.removeItem('cart');
+    window.dispatchEvent(new CustomEvent('order-placed'));
+    onOrderSuccess?.(confirmationPayload);
+  };
+
+  const handleConfirmedModalClose = () => {
+    if (ordersNavigationLoading) return;
+    closeConfirmationAndNavigate('/orders', '/');
   };
 
   const handleViewMyOrders = () => {
@@ -513,6 +486,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                 message: 'Payment successful!',
                 details: confirmationPayload
               });
+              handleOrderSuccess(confirmationPayload);
               setLoading(false);
               setPaymentProcessing(false);
               moveToConfirmationStep(confirmationPayload);
@@ -561,6 +535,21 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const activeUserToken =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('userToken') ||
+      sessionStorage.getItem('userToken');
+
+    if (!activeUserToken) {
+      const authMessage = 'Please login to place your order.';
+      setError(authMessage);
+      showError(authMessage);
+      onClose();
+      navigate('/login', { replace: true });
+      return;
+    }
     
     // Only process order if on step 3 (Order Summary)
     if (currentStep !== 3) {
@@ -654,6 +643,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
             message: 'Order placed successfully!',
             details: confirmationPayload
           });
+          handleOrderSuccess(confirmationPayload);
           setLoading(false);
           moveToConfirmationStep(confirmationPayload);
         } else {
@@ -679,7 +669,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
       <div className={`checkout-modal ${paymentProcessing || checkoutStage === 'PROCESSING' ? 'checkout-modal--processing' : ''}`}>
         <button
           className="checkout-modal-close"
-          onClick={currentStep === 4 && confirmationData ? () => closeConfirmationAndNavigate('/products') : onClose}
+          onClick={currentStep === 4 && confirmationData ? handleConfirmedModalClose : onClose}
           aria-label="Close"
           disabled={paymentProcessing || checkoutStage === 'PROCESSING' || ordersNavigationLoading}
         >
@@ -691,7 +681,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
         </div>
 
         {/* Step Indicator */}
-        {checkoutStage === 'FORM' && (
+        {checkoutStage === 'FORM' && !orderSuccess && (
         <div className="checkout-steps-indicator">
           <div className={`step-item ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
             <div className="step-circle">
@@ -727,15 +717,13 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
           <form onSubmit={handleSubmit} className="checkout-form-shell">
             
             {/* STEP 1: Customer Details */}
-            <div className={`checkout-section step-content checkout-section--address step-panel ${checkoutStage === 'FORM' && currentStep === 1 ? 'step-panel--active' : ''}`}>
+            <div className={`checkout-section step-content checkout-section--address step-panel ${checkoutStage === 'FORM' && !orderSuccess && currentStep === 1 ? 'step-panel--active' : ''}`}>
                 <CheckoutAddressStep
                   formData={formData}
                   fieldErrors={fieldErrors}
                   onChange={handleChange}
                   loading={loading}
                   paymentProcessing={paymentProcessing}
-                  pincodeLookupLoading={pincodeLookupLoading}
-                  pincodeHint={pincodeHint}
                   deliveryEstimate={deliveryEstimate}
                   savedAddresses={savedAddresses}
                   selectedSavedAddressId={selectedSavedAddressId}
@@ -748,7 +736,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
               </div>
 
             {/* STEP 2: Payment Method */}
-            <div className={`checkout-section step-content step-panel ${checkoutStage === 'FORM' && currentStep === 2 ? 'step-panel--active' : ''}`}>
+            <div className={`checkout-section step-content step-panel ${checkoutStage === 'FORM' && !orderSuccess && currentStep === 2 ? 'step-panel--active' : ''}`}>
                 <h3>💳 Payment Method</h3>
 
                 <div className="checkout-payment-options">
@@ -789,7 +777,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
               </div>
 
             {/* STEP 3: Order Summary */}
-            <div className={`checkout-section step-content step-panel ${checkoutStage === 'FORM' && currentStep === 3 ? 'step-panel--active' : ''}`}>
+            <div className={`checkout-section step-content step-panel ${checkoutStage === 'FORM' && !orderSuccess && currentStep === 3 ? 'step-panel--active' : ''}`}>
                 <h3>📦 Order Summary</h3>
 
                 <div className="checkout-step3-grid">
@@ -930,7 +918,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
               </div>
 
             {/* Navigation Buttons */}
-            {checkoutStage === 'FORM' && currentStep < 4 && (
+            {checkoutStage === 'FORM' && !orderSuccess && currentStep < 4 && (
             <div className={`checkout-actions ${currentStep === 1 ? 'checkout-actions--address' : ''}`}>
               {currentStep > 1 && currentStep < 4 && (
                 <button

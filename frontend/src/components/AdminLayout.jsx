@@ -92,7 +92,7 @@ const AdminLayout = ({ children }) => {
     { path: '/admin/customers', icon: '👥', label: 'Customers', tooltip: 'Customers' },
     { path: '/admin/reports', icon: '📄', label: 'Reports', tooltip: 'Reports' },
     { path: '/admin/contact-messages', icon: '✉️', label: 'Contact Messages', tooltip: 'Contact Messages' },
-    { path: '/admin/refund-requests', icon: '↩️', label: 'Returns & Refunds', tooltip: 'Returns & Refunds' }
+    { path: '/admin/refund-requests', icon: '↩️', label: 'Return & Refund', tooltip: 'Return & Refund' }
   ];
 
   // Only add Admin Management menu for MAIN_ADMIN (role-based check)

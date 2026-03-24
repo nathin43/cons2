@@ -24,7 +24,12 @@ const StatusBadge = ({ status }) => {
   const normalized = String(status || '').toLowerCase();
   const mapped = normalized === 'pending' || normalized === 'in-progress' ? 'new' : normalized;
   const label = mapped === 'new' ? 'Pending' : mapped.charAt(0).toUpperCase() + mapped.slice(1).replace('-', ' ');
-  return <span className={`rr-status-badge rr-status-${mapped}`}>{label}</span>;
+  return (
+    <span className={`rr-status-badge rr-status-${mapped}`}>
+      <span className="rr-status-dot" aria-hidden="true"></span>
+      {label}
+    </span>
+  );
 };
 
 const PaymentBadge = ({ paymentStatus }) => {
@@ -37,6 +42,314 @@ const PaymentBadge = ({ paymentStatus }) => {
     <span className={`rr-payment-badge ${normalized === 'paid' ? 'rr-payment-paid' : 'rr-payment-other'}`}>
       {normalized === 'paid' ? 'PAID' : normalized.toUpperCase()}
     </span>
+  );
+};
+
+const StatsCard = ({ icon, label, value, tone = 'blue' }) => (
+  <div className={`rr-stat-card rr-stat-card-modern rr-stat-${tone}`}>
+    <span className="rr-stat-icon" aria-hidden="true">{icon}</span>
+    <div>
+      <span className="rr-stat-label">{label}</span>
+      <strong className="rr-stat-value">{value}</strong>
+    </div>
+  </div>
+);
+
+const StatsCarousel = ({ stats }) => (
+  <div className="rr-stats-carousel" role="region" aria-label="Return and refund overview">
+    <StatsCard
+      icon={(
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+      )}
+      label="Total Returns"
+      value={stats.totalReturns}
+      tone="blue"
+    />
+    <StatsCard
+      icon={(
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      )}
+      label="Pending Returns"
+      value={stats.pendingReturns}
+      tone="amber"
+    />
+    <StatsCard
+      icon={(
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <line x1="2" y1="10" x2="22" y2="10" />
+        </svg>
+      )}
+      label="Total Refunds"
+      value={stats.totalRefunds}
+      tone="green"
+    />
+    <StatsCard
+      icon={(
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4" />
+          <path d="M12 16h.01" />
+        </svg>
+      )}
+      label="Pending Refunds"
+      value={stats.pendingRefunds}
+      tone="purple"
+    />
+  </div>
+);
+
+const FilterBar = ({
+  searchQuery,
+  onSearch,
+  statusFilter,
+  statusOptions,
+  onStatus,
+  fromDate,
+  toDate,
+  onFromDate,
+  onToDate,
+  onClear,
+}) => (
+  <div className="rr-toolbar rr-toolbar-sticky">
+    <div className="rr-search-box">
+      <span className="rr-search-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+        </svg>
+      </span>
+      <input
+        type="text"
+        placeholder="Search by Order ID or Customer"
+        value={searchQuery}
+        onChange={(e) => onSearch(e.target.value)}
+        className="rr-search-input"
+      />
+      {searchQuery && (
+        <button className="rr-search-clear" onClick={() => onSearch('')} aria-label="Clear search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      )}
+    </div>
+
+    <div className="rr-status-tabs rr-status-pills">
+      {statusOptions.map((status) => (
+        <button
+          key={status}
+          className={`rr-tab ${statusFilter === status ? 'active' : ''}`}
+          onClick={() => onStatus(status)}
+        >
+          {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+        </button>
+      ))}
+    </div>
+
+    <div className="rr-date-filters">
+      <input type="date" className="rr-date-input" value={fromDate} onChange={(e) => onFromDate(e.target.value)} />
+      <input type="date" className="rr-date-input" value={toDate} onChange={(e) => onToDate(e.target.value)} />
+      <button className="rr-clear-btn" onClick={onClear}>Clear</button>
+    </div>
+  </div>
+);
+
+const ActionHoverMenu = ({
+  status,
+  canReply,
+  hasNewMessage,
+  loadingApprove,
+  loadingReject,
+  onView,
+  onReply,
+  onApprove,
+  onReject,
+}) => {
+  const normalized = String(status || '').toLowerCase();
+  const isApprovedLike = ['approved', 'completed'].includes(normalized);
+  const isRejected = normalized === 'rejected';
+
+  return (
+    <div className="rr-action-buttons" role="toolbar" aria-label="Request actions">
+      <button className="rr-action-btn rr-action-view" title="View" onClick={onView}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button
+        className={`rr-action-btn rr-action-reply ${hasNewMessage ? 'rr-action-has-dot' : ''}`}
+        title={canReply ? 'Reply' : 'Reply unavailable'}
+        onClick={onReply}
+        disabled={!canReply}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button
+        className="rr-action-btn rr-action-approve"
+        title="Approve"
+        onClick={onApprove}
+        disabled={isApprovedLike || isRejected || loadingApprove}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </button>
+      <button
+        className="rr-action-btn rr-action-reject"
+        title="Reject"
+        onClick={onReject}
+        disabled={isApprovedLike || isRejected || loadingReject}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  );
+};
+
+const ReturnCard = ({
+  type,
+  entry,
+  actionLoading,
+  onViewReturn,
+  onViewRefund,
+  onOpenWhatsApp,
+  onOpenChat,
+  onApproveReturn,
+  onRejectReturn,
+  onApproveRefund,
+  onRejectRefund,
+}) => {
+  const isReturn = type === TAB_KEYS.RETURNS;
+  const phoneMeta = normalizeIndianPhone(isReturn ? entry.phone : entry.customerPhone);
+  const canUseWhatsApp = phoneMeta.hasValue && phoneMeta.isValid;
+  const hasNewMessage = entry.lastMessageSender === 'USER';
+  const statusValue = isReturn ? entry.normalizedStatus : entry.refundStatus;
+  const reasonText = isReturn ? entry.returnReason : (REASON_LABELS[entry.reason] || entry.reason || 'N/A');
+  const conditionTag = isReturn ? entry.conditionLabel : entry.typeLabel;
+  const productText = isReturn ? entry.productLabel : (entry.product || 'N/A');
+  const mailText = isReturn ? (entry.email || 'N/A') : (entry.customerEmail || 'N/A');
+  const customerText = isReturn ? entry.customerName : (entry.customerName || 'Customer');
+
+  if (isReturn) {
+    return (
+      <article className={`rr-request-card ${entry.normalizedStatus === 'pending' ? 'rr-row-new' : ''}`}>
+        <div className="rr-card-main">
+          <div className="rr-card-top">
+            <span className="rr-order-id">{entry.orderId ? `#${entry.orderId}` : '—'}</span>
+            <div className="rr-card-meta-right">
+              <span className="rr-card-date">{formatDate(entry.createdAt)}</span>
+              <StatusBadge status={statusValue} />
+            </div>
+          </div>
+
+          <div className="rr-card-grid">
+            <div className="rr-card-col">
+              <span className="rr-card-label">Customer</span>
+              <div className="rr-customer">
+                <span className="rr-customer-name">{customerText}</span>
+                <span className="rr-customer-email">{mailText}</span>
+              </div>
+            </div>
+
+            <div className="rr-card-col">
+              <span className="rr-card-label">Product</span>
+              <p className="rr-card-value">{productText}</p>
+            </div>
+
+            <div className="rr-card-col rr-card-col-wide">
+              <span className="rr-card-label">Reason</span>
+              <p className="rr-card-value rr-card-reason">{reasonText}</p>
+            </div>
+
+            <div className="rr-card-col rr-card-tags-col">
+              <span className="rr-card-label">Tags</span>
+              <div className="rr-card-tags">
+                <span className="rr-category-pill">{conditionTag}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rr-card-actions-wrap">
+          <ActionHoverMenu
+            status={entry.normalizedStatus}
+            canReply={canUseWhatsApp}
+            hasNewMessage={hasNewMessage}
+            loadingApprove={actionLoading === `return-${entry.returnId}-approved`}
+            loadingReject={actionLoading === `return-${entry.returnId}-rejected`}
+            onView={() => onViewReturn(entry)}
+            onReply={() => onOpenWhatsApp(TAB_KEYS.RETURNS, entry)}
+            onApprove={() => onApproveReturn(entry.returnId)}
+            onReject={() => onRejectReturn(entry.returnId)}
+          />
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article className={`rr-request-card ${entry.refundStatus === 'pending' ? 'rr-row-new' : ''}`}>
+      <div className="rr-card-main">
+        <div className="rr-card-top">
+          <span className="rr-order-id">{entry.orderId ? `#${entry.orderId}` : '—'}</span>
+          <div className="rr-card-meta-right">
+            <span className="rr-card-date">{formatDate(entry.createdAt)}</span>
+            <StatusBadge status={statusValue} />
+          </div>
+        </div>
+
+        <div className="rr-card-grid">
+          <div className="rr-card-col">
+            <span className="rr-card-label">Customer</span>
+            <div className="rr-customer">
+              <span className="rr-customer-name">{customerText}</span>
+              <span className="rr-customer-email">{mailText}</span>
+            </div>
+          </div>
+
+          <div className="rr-card-col">
+            <span className="rr-card-label">Product</span>
+            <p className="rr-card-value">{productText}</p>
+          </div>
+
+          <div className="rr-card-col rr-card-col-wide">
+            <span className="rr-card-label">Reason</span>
+            <p className="rr-card-value rr-card-reason">{reasonText}</p>
+          </div>
+
+          <div className="rr-card-col rr-card-tags-col">
+            <span className="rr-card-label">Tags</span>
+            <div className="rr-card-tags rr-card-tags-refund">
+              <span className="rr-category-pill">{conditionTag}</span>
+              <PaymentBadge paymentStatus={entry.paymentStatus} />
+              {String(entry.paymentMethod || '').trim() && (
+                <span className="rr-payment-note">{String(entry.paymentMethod)}</span>
+              )}
+              <span className="rr-refund-amount">{typeof entry.amount === 'number' ? `Rs ${entry.amount.toLocaleString('en-IN')}` : 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rr-card-actions-wrap">
+        <ActionHoverMenu
+          status={entry.refundStatus}
+          canReply={true}
+          hasNewMessage={hasNewMessage}
+          loadingApprove={actionLoading === `refund-${entry.refundId}-approved`}
+          loadingReject={actionLoading === `refund-${entry.refundId}-rejected`}
+          onView={() => onViewRefund(entry)}
+          onReply={() => onOpenChat(entry)}
+          onApprove={() => onApproveRefund(entry.refundId)}
+          onReject={() => onRejectRefund(entry.refundId)}
+        />
+      </div>
+    </article>
   );
 };
 
@@ -361,6 +674,10 @@ const AdminRefundRequests = () => {
   };
 
   const handleReturnStatus = async (returnId, nextStatus) => {
+    if (['approved', 'rejected'].includes(nextStatus)) {
+      const ok = window.confirm(`Are you sure you want to ${nextStatus} this return request?`);
+      if (!ok) return;
+    }
     setActionLoading(`return-${returnId}-${nextStatus}`);
     try {
       const { data } = await API.put(`/returns/${returnId}`, { status: nextStatus });
@@ -401,6 +718,10 @@ const AdminRefundRequests = () => {
   };
 
   const handleRefundStatus = async (refundId, nextStatus) => {
+    if (['approved', 'rejected'].includes(nextStatus)) {
+      const ok = window.confirm(`Are you sure you want to ${nextStatus} this refund request?`);
+      if (!ok) return;
+    }
     setActionLoading(`refund-${refundId}-${nextStatus}`);
     try {
       const { data } = await API.put(`/refunds/${refundId}`, { refundStatus: nextStatus });
@@ -496,7 +817,7 @@ const AdminRefundRequests = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <DashboardSkeleton />
+        <DashboardSkeleton text="Loading Returns & Refunds..." />
       </AdminLayout>
     );
   }
@@ -506,28 +827,12 @@ const AdminRefundRequests = () => {
       <div className="rr-page">
         <div className="rr-header">
           <div className="rr-header-left">
-            <h1 className="rr-title">Returns & Refunds</h1>
+            <p className="rr-breadcrumb">Return &amp; Refund</p>
+            <h1 className="rr-title">Return &amp; Refund</h1>
             <p className="rr-subtitle">Single workflow with clear internal tabs for returns and refunds</p>
           </div>
 
-          <div className="rr-header-stats">
-            <div className="rr-stat-card">
-              <span className="rr-stat-count">{stats.totalReturns}</span>
-              <span className="rr-stat-label">Total Returns</span>
-            </div>
-            <div className="rr-stat-card rr-stat-pending">
-              <span className="rr-stat-count">{stats.pendingReturns}</span>
-              <span className="rr-stat-label">Pending Returns</span>
-            </div>
-            <div className="rr-stat-card">
-              <span className="rr-stat-count">{stats.totalRefunds}</span>
-              <span className="rr-stat-label">Total Refunds</span>
-            </div>
-            <div className="rr-stat-card rr-stat-pending">
-              <span className="rr-stat-count">{stats.pendingRefunds}</span>
-              <span className="rr-stat-label">Pending Refunds</span>
-            </div>
-          </div>
+          <StatsCarousel stats={stats} />
         </div>
 
         <div className="rr-status-tabs rr-section-tabs">
@@ -551,219 +856,53 @@ const AdminRefundRequests = () => {
           </button>
         </div>
 
-        <div className="rr-filters">
-          <div className="rr-search-box">
-            <span className="rr-search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Search by Order ID or Customer"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="rr-search-input"
-            />
-            {searchQuery && <button className="rr-search-clear" onClick={() => setSearchQuery('')}>✕</button>}
-          </div>
-
-          <div className="rr-status-tabs">
-            {currentStatusOptions.map((status) => (
-              <button
-                key={status}
-                className={`rr-tab ${statusFilter === status ? 'active' : ''}`}
-                onClick={() => setStatusFilter(status)}
-              >
-                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
-              </button>
-            ))}
-          </div>
-
-          <div className="rr-date-filters">
-            <input
-              type="date"
-              className="rr-date-input"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-            <input
-              type="date"
-              className="rr-date-input"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-            <button className="rr-clear-btn" onClick={clearFilters}>Clear</button>
-          </div>
-        </div>
+        <FilterBar
+          searchQuery={searchQuery}
+          onSearch={setSearchQuery}
+          statusFilter={statusFilter}
+          statusOptions={currentStatusOptions}
+          onStatus={setStatusFilter}
+          fromDate={fromDate}
+          toDate={toDate}
+          onFromDate={setFromDate}
+          onToDate={setToDate}
+          onClear={clearFilters}
+        />
 
         <div className="rr-section-panel" key={activeTab}>
           {currentRows.length === 0 ? (
             <div className="rr-empty">
-              <span className="rr-empty-icon">📋</span>
-              <p>No {activeTab === TAB_KEYS.RETURNS ? 'return' : 'refund'} requests found</p>
+              <div className="rr-empty-illustration" aria-hidden="true">
+                <svg viewBox="0 0 240 140" fill="none">
+                  <rect x="30" y="28" width="180" height="84" rx="14" fill="#EEF2FF" stroke="#C7D2FE" />
+                  <rect x="52" y="48" width="82" height="10" rx="5" fill="#A5B4FC" />
+                  <rect x="52" y="66" width="130" height="8" rx="4" fill="#C7D2FE" />
+                  <rect x="52" y="80" width="108" height="8" rx="4" fill="#C7D2FE" />
+                  <circle cx="188" cy="62" r="16" fill="#E0E7FF" />
+                  <path d="M180 62l5 5 10-10" stroke="#4F46E5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3>No {activeTab === TAB_KEYS.RETURNS ? 'return' : 'refund'} requests found</h3>
+              <p>Try adjusting search, status, or date range.</p>
             </div>
           ) : (
-            <div className="rr-table-wrapper">
-              {activeTab === TAB_KEYS.RETURNS ? (
-                <table className="rr-table">
-                  <thead>
-                    <tr>
-                      <th>Order ID</th>
-                      <th>Customer</th>
-                      <th>Product</th>
-                      <th>Return Reason</th>
-                      <th>Condition</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredReturns.map((entry) => (
-                      (() => {
-                        const phoneMeta = normalizeIndianPhone(entry.phone);
-                        const canUseWhatsApp = phoneMeta.hasValue && phoneMeta.isValid;
-                        const hasNewMessage = entry.lastMessageSender === 'USER';
-                        return (
-                      <tr key={entry.returnId} className={entry.normalizedStatus === 'pending' ? 'rr-row-new' : ''}>
-                        <td><span className="rr-order-id">{entry.orderId ? `#${entry.orderId}` : '—'}</span></td>
-                        <td>
-                          <div className="rr-customer">
-                            <span className="rr-customer-name">{entry.customerName}</span>
-                            <span className="rr-customer-email">{entry.email || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td>{entry.productLabel}</td>
-                        <td>{entry.returnReason}</td>
-                        <td><span className="rr-category-pill">{entry.conditionLabel}</span></td>
-                        <td>{formatDate(entry.createdAt)}</td>
-                        <td><StatusBadge status={entry.normalizedStatus} /></td>
-                        <td>
-                          <div className="rr-actions">
-                            <button className="rr-btn rr-btn-view" onClick={() => openReturnDetail(entry)}>👁 View</button>
-                            <button
-                              className="rr-btn rr-btn-whatsapp"
-                              title={canUseWhatsApp ? 'Send WhatsApp Reply' : 'Phone number not available'}
-                              disabled={!canUseWhatsApp}
-                              onClick={() => openWhatsAppModal(TAB_KEYS.RETURNS, entry)}
-                            >
-                              <span className="rr-wa-btn-content">
-                                <span className="rr-wa-icon" aria-hidden="true">💬</span>
-                                <span>Reply</span>
-                                {hasNewMessage && <span className="rr-wa-new-badge">New Message</span>}
-                              </span>
-                            </button>
-                            {entry.normalizedStatus !== 'approved' && (
-                              <button
-                                className="rr-btn rr-btn-approve"
-                                disabled={actionLoading === `return-${entry.returnId}-approved`}
-                                onClick={() => handleReturnStatus(entry.returnId, 'approved')}
-                              >
-                                {actionLoading === `return-${entry.returnId}-approved` ? '…' : '✔ Approve Return'}
-                              </button>
-                            )}
-                            {entry.normalizedStatus !== 'rejected' && (
-                              <button
-                                className="rr-btn rr-btn-reject"
-                                disabled={actionLoading === `return-${entry.returnId}-rejected`}
-                                onClick={() => handleReturnStatus(entry.returnId, 'rejected')}
-                              >
-                                {actionLoading === `return-${entry.returnId}-rejected` ? '…' : '✕ Reject Return'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                        );
-                      })()
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="rr-table">
-                  <thead>
-                    <tr>
-                      <th>Order ID</th>
-                      <th>Customer</th>
-                      <th>Type</th>
-                      <th>Product</th>
-                      <th>Reason</th>
-                      <th>Payment</th>
-                      <th>Amount</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRefunds.map((entry) => (
-                      (() => {
-                        const phoneMeta = normalizeIndianPhone(entry.customerPhone);
-                        const canUseWhatsApp = phoneMeta.hasValue && phoneMeta.isValid;
-                        const hasNewMessage = entry.lastMessageSender === 'USER';
-                        return (
-                      <tr key={entry.refundId} className={entry.refundStatus === 'pending' ? 'rr-row-new' : ''}>
-                        <td><span className="rr-order-id">{entry.orderId ? `#${entry.orderId}` : '—'}</span></td>
-                        <td>
-                          <div className="rr-customer">
-                            <span className="rr-customer-name">{entry.customerName || 'Customer'}</span>
-                            <span className="rr-customer-email">{entry.customerEmail || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td><span className="rr-category-pill">{entry.typeLabel}</span></td>
-                        <td>{entry.product || 'N/A'}</td>
-                        <td>{REASON_LABELS[entry.reason] || entry.reason || 'N/A'}</td>
-                        <td>
-                          <div className="rr-payment-cell">
-                            <PaymentBadge paymentStatus={entry.paymentStatus} />
-                            {String(entry.paymentMethod || '').trim() && (
-                              <span className="rr-payment-note">{String(entry.paymentMethod)}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td>{typeof entry.amount === 'number' ? `Rs ${entry.amount.toLocaleString('en-IN')}` : 'N/A'}</td>
-                        <td>{formatDate(entry.createdAt)}</td>
-                        <td><StatusBadge status={entry.refundStatus} /></td>
-                        <td>
-                          <div className="rr-actions">
-                            <button className="rr-btn rr-btn-view" onClick={() => openRefundDetail(entry)}>👁 View</button>
-                            <button className="rr-btn rr-btn-reply" onClick={() => openChat(entry)}>💬 Chat</button>
-                            <button
-                              className="rr-btn rr-btn-whatsapp"
-                              title={canUseWhatsApp ? 'Send WhatsApp Reply' : 'Phone number not available'}
-                              disabled={!canUseWhatsApp}
-                              onClick={() => openWhatsAppModal(TAB_KEYS.REFUNDS, entry)}
-                            >
-                              <span className="rr-wa-btn-content">
-                                <span className="rr-wa-icon" aria-hidden="true">💬</span>
-                                <span>Reply</span>
-                                {hasNewMessage && <span className="rr-wa-new-badge">New Message</span>}
-                              </span>
-                            </button>
-                            {entry.refundStatus !== 'approved' && (
-                              <button
-                                className="rr-btn rr-btn-approve"
-                                disabled={actionLoading === `refund-${entry.refundId}-approved`}
-                                onClick={() => handleRefundStatus(entry.refundId, 'approved')}
-                              >
-                                {actionLoading === `refund-${entry.refundId}-approved` ? '…' : '✔ Approve Refund'}
-                              </button>
-                            )}
-                            {entry.refundStatus !== 'rejected' && (
-                              <button
-                                className="rr-btn rr-btn-reject"
-                                disabled={actionLoading === `refund-${entry.refundId}-rejected`}
-                                onClick={() => handleRefundStatus(entry.refundId, 'rejected')}
-                              >
-                                {actionLoading === `refund-${entry.refundId}-rejected` ? '…' : '✕ Reject Refund'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                        );
-                      })()
-                    ))}
-                  </tbody>
-                </table>
-              )}
+            <div className="rr-cards-list">
+              {currentRows.map((entry) => (
+                <ReturnCard
+                  key={activeTab === TAB_KEYS.RETURNS ? entry.returnId : entry.refundId}
+                  type={activeTab}
+                  entry={entry}
+                  actionLoading={actionLoading}
+                  onViewReturn={openReturnDetail}
+                  onViewRefund={openRefundDetail}
+                  onOpenWhatsApp={openWhatsAppModal}
+                  onOpenChat={openChat}
+                  onApproveReturn={(returnId) => handleReturnStatus(returnId, 'approved')}
+                  onRejectReturn={(returnId) => handleReturnStatus(returnId, 'rejected')}
+                  onApproveRefund={(refundId) => handleRefundStatus(refundId, 'approved')}
+                  onRejectRefund={(refundId) => handleRefundStatus(refundId, 'rejected')}
+                />
+              ))}
             </div>
           )}
         </div>

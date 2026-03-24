@@ -6,8 +6,6 @@ const CheckoutAddressStep = ({
   onChange,
   loading,
   paymentProcessing,
-  pincodeLookupLoading,
-  pincodeHint,
   savedAddresses,
   selectedSavedAddressId,
   onSelectSavedAddress,
@@ -127,9 +125,7 @@ const CheckoutAddressStep = ({
                 className={fieldErrors.pincode ? 'is-invalid' : ''}
               />
               <label htmlFor="checkout-pincode">Pincode <span className="required">*</span></label>
-              {pincodeLookupLoading && <span className="checkout-pin-loader" aria-hidden="true"></span>}
             </div>
-            <p className="checkout-hint">{pincodeHint}</p>
             {fieldErrors.pincode && <p className="checkout-inline-error">{fieldErrors.pincode}</p>}
           </div>
 

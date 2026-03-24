@@ -212,6 +212,21 @@ export const CartProvider = ({ children }) => {
     return cart.items.reduce((total, item) => total + item.quantity, 0);
   };
 
+  // Clear cart locally without making any API request.
+  const clearCartStateImmediately = () => {
+    setCart({ items: [], totalAmount: 0 });
+    setLoading(false);
+    setUseLocalStorage(true);
+
+    try {
+      localStorage.removeItem('cart');
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem('cart');
+    } catch (error) {
+      console.error('Error clearing local cart state:', error);
+    }
+  };
+
   const value = {
     cart,
     loading,
@@ -219,6 +234,7 @@ export const CartProvider = ({ children }) => {
     updateCartItem,
     removeFromCart,
     clearCart,
+    clearCartStateImmediately,
     fetchCart,
     cartCount: getCartCount(),
     useLocalStorage

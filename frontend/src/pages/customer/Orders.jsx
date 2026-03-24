@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useToast } from '../../hooks/useToast';
@@ -28,6 +28,7 @@ const Orders = () => {
   ];
 
   const location = useLocation();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -88,6 +89,20 @@ const Orders = () => {
   }, []);
 
   const fetchOrders = async () => {
+    const activeUserToken =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('userToken') ||
+      sessionStorage.getItem('userToken');
+
+    if (!activeUserToken) {
+      setError('Please login to view your orders.');
+      setOrders([]);
+      setLoading(false);
+      navigate('/login', { replace: true });
+      return;
+    }
+
     setLoading(true);
     try {
       setError('');
@@ -104,6 +119,16 @@ const Orders = () => {
   };
 
   const fetchMyRefundConversations = async () => {
+    const activeUserToken =
+      localStorage.getItem('token') ||
+      sessionStorage.getItem('token') ||
+      localStorage.getItem('userToken') ||
+      sessionStorage.getItem('userToken');
+
+    if (!activeUserToken) {
+      return;
+    }
+
     try {
       const { data } = await API.get('/refunds/my/list');
       if (!data?.success) return;
