@@ -936,7 +936,8 @@
 }
 
 .checkout-field input,
-.checkout-field textarea {
+.checkout-field textarea,
+.checkout-field select {
   width: 100%;
   box-sizing: border-box;
   padding: 11px 14px;
@@ -961,7 +962,13 @@
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 
-.checkout-field input:disabled {
+.checkout-field select.is-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.checkout-field input:disabled,
+.checkout-field select:disabled {
   background: #f1f5f9;
   color: #64748b;
   cursor: not-allowed;
@@ -973,7 +980,8 @@
 }
 
 .checkout-field input:focus,
-.checkout-field textarea:focus {
+.checkout-field textarea:focus,
+.checkout-field select:focus {
   background: #ffffff;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);

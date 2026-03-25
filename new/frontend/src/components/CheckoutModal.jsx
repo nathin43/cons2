@@ -92,8 +92,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
   const [confirmationData, setConfirmationData] = useState(null);
   const [redirectCountdown, setRedirectCountdown] = useState(CONFIRMATION_REDIRECT_SECONDS);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
-  const [pincodeHint, setPincodeHint] = useState('Enter 6-digit pincode to auto-detect city and state.');
+  const [pincodeHint, setPincodeHint] = useState('Enter 6-digit pincode. Fill city and state manually.');
   const [deliveryEstimate, setDeliveryEstimate] = useState('Enter pincode to see delivery estimate');
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState('new');
@@ -122,8 +121,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
         setConfirmationData(null);
         setRedirectCountdown(CONFIRMATION_REDIRECT_SECONDS);
         setFieldErrors({});
-        setPincodeLookupLoading(false);
-        setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
+        setPincodeHint('Enter 6-digit pincode. Fill city and state manually.');
         setDeliveryEstimate('Enter pincode to see delivery estimate');
         setLocationPreview(null);
         setLocationLoading(false);
@@ -187,7 +185,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
       nextValue = String(value).replace(/\D/g, '').slice(0, 6);
       setDeliveryEstimate(getDeliveryEstimate(nextValue));
       if (String(nextValue).length < 6) {
-        setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
+        setPincodeHint('Enter 6-digit pincode. Fill city and state manually.');
       }
     }
 
@@ -199,53 +197,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
 
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
-
-  useEffect(() => {
-    const pin = String(formData.pincode || '').trim();
-
-    if (!/^\d{6}$/.test(pin)) {
-      setPincodeLookupLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const timer = setTimeout(async () => {
-      setPincodeLookupLoading(true);
-      setPincodeHint('Detecting city and state from pincode...');
-
-      try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-        const data = await res.json();
-        const entry = Array.isArray(data) ? data[0] : null;
-        const office = entry?.PostOffice?.[0];
-
-        if (isCancelled) return;
-
-        if (entry?.Status === 'Success' && office) {
-          setFormData((prev) => ({
-            ...prev,
-            city: office.District || prev.city,
-            state: office.State || prev.state
-          }));
-          setPincodeHint('City and state auto-detected from pincode.');
-          setFieldErrors((prev) => ({ ...prev, pincode: '', city: '', state: '' }));
-        } else {
-          setPincodeHint('Could not auto-detect city/state. Please enter manually.');
-        }
-      } catch {
-        if (!isCancelled) {
-          setPincodeHint('Could not auto-detect city/state. Please enter manually.');
-        }
-      } finally {
-        if (!isCancelled) setPincodeLookupLoading(false);
-      }
-    }, 350);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-    };
-  }, [formData.pincode]);
 
   const handleSelectSavedAddress = (addressId) => {
     const selected = savedAddresses.find((address) => address.id === addressId);
@@ -268,7 +219,7 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
       state: '',
       pincode: ''
     }));
-    setPincodeHint('Enter 6-digit pincode to auto-detect city and state.');
+    setPincodeHint('Enter 6-digit pincode. Fill city and state manually.');
     setDeliveryEstimate('Enter pincode to see delivery estimate');
     setFieldErrors({});
   };
@@ -737,7 +688,6 @@ const CheckoutModal = ({ isOpen, onClose, selectedItems, subtotal = 0, gst = 0, 
                   onChange={handleChange}
                   loading={loading}
                   paymentProcessing={paymentProcessing}
-                  pincodeLookupLoading={pincodeLookupLoading}
                   pincodeHint={pincodeHint}
                   deliveryEstimate={deliveryEstimate}
                   savedAddresses={savedAddresses}

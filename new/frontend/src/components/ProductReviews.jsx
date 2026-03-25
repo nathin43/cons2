@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../hooks/useToast';
 import API from '../services/api';
 import './ProductReviews.css';
 
@@ -9,6 +10,7 @@ import './ProductReviews.css';
  */
 const ProductReviews = ({ productId, product }) => {
   const { isAuthenticated, user } = useContext(AuthContext);
+  const { success: toastSuccess, error: toastError } = useToast();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -122,7 +124,7 @@ const ProductReviews = ({ productId, product }) => {
         const { data } = await API.put(`/reviews/${editingReviewId}`, formData);
         if (data.success) {
           setReviews(reviews.map(r => r._id === editingReviewId ? data.review : r));
-          alert('Review updated successfully!');
+          toastSuccess('Review updated successfully!');
           setFormData({ rating: 5, title: '', feedback: '' });
           setEditingReviewId(null);
           setShowForm(false);
@@ -138,11 +140,11 @@ const ProductReviews = ({ productId, product }) => {
           setFormData({ rating: 5, title: '', feedback: '' });
           setShowForm(false);
           setCanReview(false);
-          alert('Review added successfully!');
+          toastSuccess('Review added successfully!');
         }
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Error submitting review');
+      toastError(error.response?.data?.message || 'Error submitting review');
       console.error('Error submitting review:', error);
     } finally {
       setSubmitting(false);
@@ -160,10 +162,10 @@ const ProductReviews = ({ productId, product }) => {
         setReviews(reviews.filter(r => r._id !== reviewId));
         setCanReview(true);
         setEditingReviewId(null);
-        alert('Review deleted successfully!');
+        toastSuccess('Review deleted successfully!');
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Error deleting review');
+      toastError(error.response?.data?.message || 'Error deleting review');
     }
   };
 

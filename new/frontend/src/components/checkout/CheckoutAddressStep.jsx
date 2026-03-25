@@ -1,12 +1,50 @@
 import { memo, useRef } from 'react';
 
+const INDIA_STATES = [
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Andaman and Nicobar Islands',
+  'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Jammu and Kashmir',
+  'Ladakh',
+  'Lakshadweep',
+  'Puducherry'
+];
+
 const CheckoutAddressStep = ({
   formData,
   fieldErrors,
   onChange,
   loading,
   paymentProcessing,
-  pincodeLookupLoading,
   pincodeHint,
   savedAddresses,
   selectedSavedAddressId,
@@ -127,7 +165,6 @@ const CheckoutAddressStep = ({
                 className={fieldErrors.pincode ? 'is-invalid' : ''}
               />
               <label htmlFor="checkout-pincode">Pincode <span className="required">*</span></label>
-              {pincodeLookupLoading && <span className="checkout-pin-loader" aria-hidden="true"></span>}
             </div>
             <p className="checkout-hint">{pincodeHint}</p>
             {fieldErrors.pincode && <p className="checkout-inline-error">{fieldErrors.pincode}</p>}
@@ -154,7 +191,7 @@ const CheckoutAddressStep = ({
                 id="checkout-city"
                 type="text"
                 name="city"
-                placeholder=" "
+                placeholder="Enter your city"
                 value={formData.city}
                 onChange={onChange}
                 onKeyDown={moveOnEnter('state')}
@@ -167,20 +204,21 @@ const CheckoutAddressStep = ({
           </div>
 
           <div className="checkout-field">
-            <div className="checkout-float-input">
-              <input
-                ref={setInputRef('state')}
-                id="checkout-state"
-                type="text"
-                name="state"
-                placeholder=" "
-                value={formData.state}
-                onChange={onChange}
-                autoComplete="address-level1"
-                className={fieldErrors.state ? 'is-invalid' : ''}
-              />
-              <label htmlFor="checkout-state">State <span className="required">*</span></label>
-            </div>
+            <label htmlFor="checkout-state">State <span className="required">*</span></label>
+            <select
+              ref={setInputRef('state')}
+              id="checkout-state"
+              name="state"
+              value={formData.state}
+              onChange={onChange}
+              autoComplete="address-level1"
+              className={fieldErrors.state ? 'is-invalid' : ''}
+            >
+              <option value="">Select your state</option>
+              {INDIA_STATES.map((stateName) => (
+                <option key={stateName} value={stateName}>{stateName}</option>
+              ))}
+            </select>
             {fieldErrors.state && <p className="checkout-inline-error">{fieldErrors.state}</p>}
           </div>
         </div>
